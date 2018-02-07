@@ -1,0 +1,39 @@
+<Configuration Server="hq-vbr1.democenter.int" Username="USERNAME" Password="PASSWORD">
+	<GeneralConfiguration>
+		<ParallelProcessing Enabled="True" />
+		<!-- <StorageLatency Enabled="False" StopAssignValue="20" ThrottleValue="30" /> -->
+		<NetworkTrafficRules Enabled="False" />
+		<MultipleUploadStreams Enabled="True" Value="5" />
+		<ConfigurationBackup Enabled="True" IsEncrypted="False" />
+	</GeneralConfiguration>
+    <Proxies>
+        <ViProxy TransportMode="HotAdd" FailoverToNetwork="True" UseSsl="True" IsAutoVddkMode="True" IsAutoDetectDisks="True" IsAutoDetectAffinityRepositories="True" />
+		<HvProxy Type="HvOffhost" IsAutoDetectVolumes="True" />
+    </Proxies>
+    <Repositories>
+        <SOBR>
+			<Extent IsRotatedDriveRepository="False" HasBackupChainLengthLimitation="False" IsSanSnapshotOnly="False" IsDedupStorage="False" SplitStoragesPerVm="False" />
+		</SOBR>
+		<WinLocal />
+		<Cloud />
+		<DDBoost />
+		<ExaGrid />
+		<SanSnapshotOnly />
+		<HPStoreOnceIntegration />
+    </Repositories>
+    <BackupJobs>
+		<BackupWindow Enabled="True" Start="10:00PM" Stop="4:00AM" />
+        <BackupJob Name="VMware - Veeam Explorers" Repository="SOBR - Locality" RestorePoints="14" SANIntegration="False">
+            <AAIP Enabled="True">
+            </AAIP>
+            <BackupObjects>
+                <VM Name="demo-AD" />
+                <VM Name="demo-Oracle" />
+            </BackupObjects>
+        </BackupJob>
+        <BackupJob Name="VMware - Backup from VVOL" Repository="SOBR - Performance" RestorePoints="14" SANIntegration="False">
+            <AAIP Enabled="False">
+            </AAIP>
+        </BackupJob>
+    </BackupJobs>
+</Configuration>
