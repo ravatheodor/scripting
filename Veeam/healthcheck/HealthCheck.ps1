@@ -53,6 +53,9 @@ Write-Host ""
 $allJobs = Get-VBRJob
 
 # Check backup window
+$backupWindowArray = @('"JobName","NextRun"')
+$csvFile = ($MyInvocation.MyCommand.Path | Split-Path -Parent)+"\backupWindowFile.csv"
+
 if ($config.Configuration.BackupJobs.BackupWindow.Enabled -match "True")
 {
 	Write-Host -foreground white "...checking backup window"
@@ -66,12 +69,17 @@ if ($config.Configuration.BackupJobs.BackupWindow.Enabled -match "True")
 			if ((New-TimeSpan -Start $nextRunTime -End $config.Configuration.BackupJobs.BackupWindow.Start).TotalMinutes -gt 0 -and (New-TimeSpan -Start $nextRunTime -End $config.Configuration.BackupJobs.BackupWindow.Stop).TotalMinutes -lt 0)
 			{
 				Write-Host -foregroundcolor red  $job.Name $nextRunTime
+				$item = $job.Name + "," + $nextRunTime
+				$backupWindowArray += $item
 			} <#else 
 			{
 				Write-Host -foregroundcolor yellow $job.Name $nextRunTime
 			} #>
 		}
 	}
+	$backupWindowArray | foreach { Add-Content -Path  $csvFile -Value $_ } 
+
+	
 }
 
 # Check SOBR - PolicyType, MaxTaskCount, OneBackupFilePerVm, IsRotatedDriveRepository, HasBackupChainLengthLimitation, IsSanSnapshotOnly, IsDedupStorage, SplitStoragesPerVm
@@ -93,13 +101,15 @@ if (!$sobrList)
 	foreach ($sobr in $sobrList)
 	{
 		Write-Host -foreground white "SoBR: " $sobr.Name
-		Write-Host -foreground yellow "Policy type:" $sobr.PolicyType 
+		Write-Host -foreground yellow "Policy type:" $sobr.PolicyType
+		<#
 		Write-Host -foreground yellow "per VM backup files:" $sobr.UsePerVMBackupFiles
-		Write-Host ""
+		#>
 			
 		foreach ($extent in $sobr.Extent)
 		{
 			$numCpu = 0
+			Write-Host ""
 			Write-Host -foreground yellow "extent name: " $extent.Repository.Name
 			# Check parameters that should be False for SoBR
 			if ($extent.Repository.IsRotatedDriveRepository -match "True")
@@ -124,12 +134,13 @@ if (!$sobrList)
 			} 
 			# Check configuration of the extent
 			Write-Host -foreground yellow " Max concurrent tasks: " $extent.Repository.Options.MaxTaskCount
+			<#
 			Write-Host -foreground yellow " Align backup file data blocks : " $extent.Repository.Options.OptimizeBlockAlign
 			Write-Host -foreground yellow " Decompress backup data: " $extent.Repository.Options.Uncompress
 			Write-Host -foreground yellow " User per-VM backup file : " $extent.Repository.Options.OneBackupFilePerVm
 			Write-Host -foreground yellow " Proxy affinity auto  : " $extent.Repository.Options.IsAutoDetectAffinityProxies
 			Write-Host ""
-		
+			#>
 			# get server name where repo role is installed
 			$repoServer = Get-VBRServer | Where {$_.Id -match $extent.Repository.Info.HostId}
 			
@@ -168,7 +179,96 @@ if (!$sobrList)
 	
 }
 
-# Check repository
+
+# Check repositories
+		
+$repoArray = @('"repoName","repoServerName","MaxTaskCount","numCPU","memoryGB","TotalSizeGB","FreeSpaceGB","OptimizeBlockAlign","Uncompress","OneBackupFilePerVm","IsAutoDetectAffinityProxies","IsRotatedDriveRepository","IsSanSnapshotOnly","HasBackupChainLengthLimitation","IsDedupStorage","SplitStoragesPerVm"')
+$csvFile = ($MyInvocation.MyCommand.Path | Split-Path -Parent)+"\repoFile.csv"
+
+Write-Host ""
+$repoList = Get-VBRBackupRepository
+if (!$repoList)
+{
+	Write-Host -foreground white "...No repository found on" $config.Configuration.Server
+} else 
+{
+	Write-Host "...checking Repositories "
+	Write-Host ""
+	foreach ($repo in $repoList)
+	{
+		Write-Host -foreground white "repository: " $repo.Name
+
+		$numCpu = 0
+		$memoryGB = 0
+		$repoServerName = "N/A"
+		if ($repo.IsRotatedDriveRepository -match "True")
+		{
+			Write-Host -foreground red " IsRotatedDriveRepository: " $repo.IsRotatedDriveRepository
+		} 
+		if ($repo.IsSanSnapshotOnly -match "True")
+		{
+			Write-Host -foreground red " IsSanSnapshotOnly: " $repo.IsSanSnapshotOnly
+		} 
+		if ($repo.HasBackupChainLengthLimitation -match "True")
+		{
+			Write-Host -foreground red " HasBackupChainLengthLimitation: " $repo.HasBackupChainLengthLimitation
+		} 
+		if ($repo.IsDedupStorage -match "True")
+		{
+			Write-Host -foreground red " IsDedupStorage: " $repo.IsDedupStorage
+		} 
+		if ($repo.SplitStoragesPerVm -match "True")
+		{
+			Write-Host -foreground red " SplitStoragesPerVm: " $repo.SplitStoragesPerVm
+		} 
+		
+		Write-Host -foreground yellow " Max concurrent tasks: " $repo.Options.MaxTaskCount
+		<#
+		Write-Host -foreground yellow " Align backup file data blocks : " $repo.Options.OptimizeBlockAlign
+		Write-Host -foreground yellow " Decompress backup data: " $repo.Options.Uncompress
+		Write-Host -foreground yellow " User per-VM backup file : " $repo.Options.OneBackupFilePerVm
+		Write-Host -foreground yellow " Proxy affinity auto  : " $repo.Options.IsAutoDetectAffinityProxies
+		#>
+		Write-Host ""
+		# get server name where repo role is installed
+		$repoServer = Get-VBRServer | Where {$_.Id -match $repo.Info.HostId}
+		if ($repoServer)
+		{
+			$repoServerName = $repoServer.Name
+			# get cpu and memory - windows repo only
+			try
+			{
+				Get-WmiObject Win32_Processor -ea stop -ComputerName $repoServer.Name -Property numberOfCores | Select-Object -Property numberOfCores| foreach-object {$numCpu += $_.numberOfCores }
+			}
+			catch
+			{
+				Add-Content -Path  $errorLog -Value "WMI Error for $($repoServer.Name) : $($_.Exception.Message)"
+				$numCpu=-1
+			}
+			try
+			{
+				$memoryGB = Get-WmiObject CIM_PhysicalMemory -ComputerName $repoServer.Name  -ea stop | Measure-Object -Property capacity -sum | % {[math]::round(($_.sum / 1GB),2)}
+			}
+			catch
+			{
+				Add-Content -Path  $errorLog -Value "WMI Error for $($repoServer.Name) : $($_.Exception.Message)"
+				$memoryGB=-1
+			}		
+		} else
+		{
+			$numCpu=-1
+			$memoryGB=-1
+			$repoServerName="N/A"
+		}
+			
+		# create array item 
+		#$repoArray = @('"repoName","repoServerName","MaxTaskCount","numCPU","memoryGB","TotalSizeGB","FreeSpaceGB","OptimizeBlockAlign","Uncompress","OneBackupFilePerVm","IsAutoDetectAffinityProxies","IsRotatedDriveRepository","IsSanSnapshotOnly","HasBackupChainLengthLimitation","IsDedupStorage","SplitStoragesPerVm"')
+		$item = $repo.Name + "," + $repoServerName + "," + $repo.Options.MaxTaskCount + "," + $numCpu + "," + $memoryGB + "," + [math]::Round(($repo.Info.CachedTotalSpace)/(1024*1024*1024),1) + "," + [math]::Round(($repo.Info.CachedFreeSpace)/(1024*1024*1024),1) + "," + $repo.Options.OptimizeBlockAlign + "," + $repo.Options.Uncompress + "," + $repo.Options.OneBackupFilePerVm + "," + $repo.Options.IsAutoDetectAffinityProxies + "," + $repo.IsRotatedDriveRepository + "," + $repo.IsSanSnapshotOnly + "," + $repo.HasBackupChainLengthLimitation + "," + $repo.IsDedupStorage + "," + $repo.SplitStoragesPerVm  
+		$repoArray += $item	
+	}
+	$repoArray | foreach { Add-Content -Path  $csvFile -Value $_ } 
+	
+}
 
 # Check proxy - VMware
 $viProxyArray = @('"Name","MaxTasksCount","numCPU","memoryGB","IsDisabled","TransportMode","FailoverToNetwork","UseSsl","IsAutoDetectAffinityRepositories","IsAutoVddkMode","IsAutoDetectDisks"')
@@ -187,7 +287,7 @@ if (!$viProxyList)
 	{
 		$numCpu = 0
 		Write-Host -foreground white "proxy: " $viProxy.Name
-		Write-Host -foreground yellow "MaxTasksCount: " $viProxy.Options.MaxTasksCount
+		Write-Host -foreground yellow " MaxTasksCount: " $viProxy.Options.MaxTasksCount
 		if ($viProxy.IsDisabled -match "True")
 		{
 			Write-Host -foreground red "Proxy is disabled"
@@ -265,7 +365,7 @@ if (!$hvProxyList)
 	{
 		$numCpu = 0
 		Write-Host -foreground white "proxy: " $hvProxy.Name
-		Write-Host -foreground yellow "MaxTasksCount: " $hvProxy.MaxTasksCount
+		Write-Host -foreground yellow " MaxTasksCount: " $hvProxy.MaxTasksCount
 		if ($hvProxy.IsDisabled -match "True")
 		{
 			Write-Host -foreground red "Proxy is disabled"
@@ -309,3 +409,55 @@ if (!$hvProxyList)
 	}
 	$hvProxyArray | foreach { Add-Content -Path  $csvFile -Value $_ } 
 }
+
+# Check WAN accelerator
+$wanAccArray = @('"Name","ServerName","numCPU","memoryGB"')
+$csvFile = ($MyInvocation.MyCommand.Path | Split-Path -Parent)+"\wanAccFile.csv"
+
+$wanAccList = Get-VBRWANAccelerator
+if (!$wanAccList) 
+{
+	Write-Host -foreground white "...No WAN accelerator found" 
+	Add-Content -Path  $csvFile -Value "...No WAN accelerator found" 
+} else 
+{
+	Write-Host "...checking WAN accelerator"
+	Write-Host ""
+	foreach ($wanAcc in $wanAccList)
+	{
+		$numCpu = 0
+		Write-Host -foreground white "WAN Accelerator: " $wanAcc.Name
+
+		Write-Host ""
+		
+		# get server name where proxy role is installed
+		$wanAccServer = Get-VBRServer | Where {$_.Id -match $wanAcc.HostId}
+
+		try
+		{
+			Get-WmiObject Win32_Processor -ea stop -ComputerName $wanAccServer.Name -Property numberOfCores | Select-Object -Property numberOfCores| foreach-object {$numCpu += $_.numberOfCores }
+		}
+		catch
+		{
+			Add-Content -Path  $errorLog -Value "WMI Error for $($wanAccServer.Name) : $($_.Exception.Message)"
+			$numCpu=-1
+		}
+		try
+		{
+			$memoryGB = Get-WmiObject CIM_PhysicalMemory -ComputerName $wanAccServer.Name  -ea stop | Measure-Object -Property capacity -sum | % {[math]::round(($_.sum / 1GB),2)}
+		}
+		catch
+		{
+			Add-Content -Path  $errorLog -Value "WMI Error for $($wanAccServer.Name) : $($_.Exception.Message)"
+			$memoryGB=-1
+		}
+		# create array item 
+		# $wanAccArray = @('"Name","ServerName","numCPU","memoryGB"')
+		$item = $wanAccServer.Name + "," + $wanAccServer.Name + "," + $numCpu + "," + $memoryGB 
+		$wanAccArray += $item
+	}
+	$wanAccArray | foreach { Add-Content -Path  $csvFile -Value $_ } 
+}
+
+
+# Check jobs
