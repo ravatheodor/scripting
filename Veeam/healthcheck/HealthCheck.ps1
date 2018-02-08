@@ -3,13 +3,12 @@ Param (
     [switch]$Touch
 )
 
-
 $configFile = ($MyInvocation.MyCommand.Path | Split-Path -Parent)+"\"+$Configuration
 [xml]$config = Get-Content $configFile
 
 $errorLog = ($MyInvocation.MyCommand.Path | Split-Path -Parent)+"\hc_error.log"
 
-<#
+
 Disconnect-VBRServer -ErrorAction SilentlyContinue
 try
 {
@@ -28,7 +27,6 @@ catch
     Write-Output "Failed to connect to VBR server"
     exit
 }
-#>
 
 # Check VBR configuration backup
 Write-Host -foreground white "...checking VBR configuration status"
@@ -461,3 +459,44 @@ if (!$wanAccList)
 
 
 # Check jobs
+
+# Check number of VMs per job
+$jobsArray = @('"Name","NumberOfVms"')
+$csvFile = ($MyInvocation.MyCommand.Path | Split-Path -Parent)+"\jobsFile.csv"
+
+Write-Host -foreground white "... counting VMs in backup and replica jobs "
+
+$jobs = Get-VBRJob 
+foreach ($job in $allJobs)
+{
+	if ($job.JobType -notmatch "BackupSync")
+	{	
+		$totalVMs = 0
+		$objects = $job.GetObjectsInJob()
+		
+		foreach ($object in $objects)
+		{
+			$type = $object.GetObject().Type
+			if ($type -eq "VM")
+			{
+				$totalVMs++
+			} elseif ($type -eq "Host")
+			{
+				$jvm = Find-VBRViEntity -HostsAndClusters -Server (Get-VBRServer) | Where { $_.VmHostName -eq $object.Name }
+			} else	
+			{
+				$jvm = Find-VBRViEntity -VMsAndTemplates -Server (Get-VBRServer) | Where { $_.VmFolderName -eq $object.Name }
+			}
+		}
+
+		foreach ($vm in $jvm) {
+			$totalVMs++
+		}
+		Write-Host  $job.Name  $totalVMs
+		#$jobsArray = @('"Name","NumberOfVms"')
+		$item = $job.Name + "," + $totalVMs
+		$jobsArray += $item 
+	}
+}
+$jobsArray | foreach { Add-Content -Path  $csvFile -Value $_ } 
+
