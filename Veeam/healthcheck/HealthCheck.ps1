@@ -477,12 +477,12 @@ $csvFile = ($MyInvocation.MyCommand.Path | Split-Path -Parent)+"\jobsFile.csv"
 
 Write-Host -foreground white "... counting VMs in backup and replica jobs "
 
-$jobs = Get-VBRJob 
 foreach ($job in $allJobs)
 {
 	if ($job.JobType -notmatch "BackupSync")
 	{	
 		$totalVMs = 0
+		$jvm = ""
 		$objects = $job.GetObjectsInJob()
 		
 		foreach ($object in $objects)
@@ -494,15 +494,20 @@ foreach ($job in $allJobs)
 			} elseif ($type -eq "Host")
 			{
 				$jvm = Find-VBRViEntity -HostsAndClusters -Server (Get-VBRServer) | Where { $_.VmHostName -eq $object.Name }
-			} else	
+			} elseif ($type -eq "Directory")	
 			{
 				$jvm = Find-VBRViEntity -VMsAndTemplates -Server (Get-VBRServer) | Where { $_.VmFolderName -eq $object.Name }
+			} else 
+			{
+				Write-Host -foreground red "... skipping type " $type
 			}
 		}
 
 		foreach ($vm in $jvm) {
 			$totalVMs++
 		}
+		# VM number correction
+		$totalVMs--
 		Write-Host  $job.Name  $totalVMs
 		#$jobsArray = @('"Name","NumberOfVms"')
 		$item = $job.Name + "," + $totalVMs
@@ -512,4 +517,3 @@ foreach ($job in $allJobs)
 $jobsArray | foreach { Add-Content -Path  $csvFile -Value $_ } 
 
 # check backup job size
-
