@@ -3,12 +3,13 @@ Param (
     [switch]$Touch
 )
 
+
 $configFile = ($MyInvocation.MyCommand.Path | Split-Path -Parent)+"\"+$Configuration
 [xml]$config = Get-Content $configFile
 
 $errorLog = ($MyInvocation.MyCommand.Path | Split-Path -Parent)+"\hc_error.log"
 
-
+<#
 Disconnect-VBRServer -ErrorAction SilentlyContinue
 try
 {
@@ -27,6 +28,7 @@ catch
     Write-Output "Failed to connect to VBR server"
     exit
 }
+#>
 
 # Check VBR configuration backup
 Write-Host -foreground white "...checking VBR configuration status"
@@ -58,26 +60,35 @@ if ($config.Configuration.BackupJobs.BackupWindow.Enabled -match "True")
 {
 	Write-Host -foreground white "...checking backup window"
 	Write-Host -foreground white "Backup window is " $config.Configuration.BackupJobs.BackupWindow.Start "to" $config.Configuration.BackupJobs.BackupWindow.Stop
+	Write-Host "... jobs scheduled to start outside backup window"
 	foreach ($job in $allJobs) 
 	{
 		if ($job.ScheduleOptions.NextRun)
 		{
 			$nextRunTime = [datetime]$job.ScheduleOptions.NextRun
 			$nextRunTime = $nextRunTime.ToShortTimeString()
-			if ((New-TimeSpan -Start $nextRunTime -End $config.Configuration.BackupJobs.BackupWindow.Start).TotalMinutes -gt 0 -and (New-TimeSpan -Start $nextRunTime -End $config.Configuration.BackupJobs.BackupWindow.Stop).TotalMinutes -lt 0)
+			$nextRunBWStart = (New-TimeSpan -Start $config.Configuration.BackupJobs.BackupWindow.Start -End $nextRunTime).TotalMinutes 
+			$nextRunBWStop = (New-TimeSpan -Start $nextRunTime -End $config.Configuration.BackupJobs.BackupWindow.Stop).TotalMinutes
+			
+			if ((New-TimeSpan -Start $config.Configuration.BackupJobs.BackupWindow.Start -End $nextRunTime).TotalMinutes -ge 0 -and (New-TimeSpan -Start $nextRunTime -End $config.Configuration.BackupJobs.BackupWindow.Stop).TotalMinutes -ge 0)
+			{		
+				# Write-Host -foregroundcolor yellow  $job.Name $nextRunTime
+			} elseif (((New-TimeSpan -Start $config.Configuration.BackupJobs.BackupWindow.Start -End $nextRunTime).TotalMinutes -ge 0 -and (New-TimeSpan -Start $nextRunTime -End $config.Configuration.BackupJobs.BackupWindow.Stop).TotalMinutes -lt 0) -and ($config.Configuration.BackupJobs.BackupWindow.Stop -like "*AM*"))
 			{
-				Write-Host -foregroundcolor red  $job.Name $nextRunTime
+				
+				# Write-Host -foregroundcolor yellow  $job.Name $nextRunTime
+			} elseif (((New-TimeSpan -Start $config.Configuration.BackupJobs.BackupWindow.Start -End $nextRunTime).TotalMinutes -lt 0 -and (New-TimeSpan -Start $nextRunTime -End $config.Configuration.BackupJobs.BackupWindow.Stop).TotalMinutes -ge 0) -and ($config.Configuration.BackupJobs.BackupWindow.Start -like "*PM*"))
+			{	
+				# Write-Host -foregroundcolor yellow  $job.Name $nextRunTime
+			} else 
+			{
+				Write-Host -foregroundcolor red $job.Name $nextRunTime
 				$item = $job.Name + "," + $nextRunTime
 				$backupWindowArray += $item
-			} <#else 
-			{
-				Write-Host -foregroundcolor yellow $job.Name $nextRunTime
-			} #>
+			} 
 		}
 	}
 	$backupWindowArray | foreach { Add-Content -Path  $csvFile -Value $_ } 
-
-	
 }
 
 # Check SOBR - PolicyType, MaxTaskCount, OneBackupFilePerVm, IsRotatedDriveRepository, HasBackupChainLengthLimitation, IsSanSnapshotOnly, IsDedupStorage, SplitStoragesPerVm
@@ -499,4 +510,6 @@ foreach ($job in $allJobs)
 	}
 }
 $jobsArray | foreach { Add-Content -Path  $csvFile -Value $_ } 
+
+# check backup job size
 
