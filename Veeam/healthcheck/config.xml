@@ -2,8 +2,8 @@
 	<GeneralConfiguration>
 		<ParallelProcessing Enabled="True" />
 		<!-- <StorageLatency Enabled="False" StopAssignValue="20" ThrottleValue="30" /> -->
-		<NetworkTrafficRules Enabled="False" />
-		<MultipleUploadStreams Enabled="True" Value="5" />
+		<!-- <NetworkTrafficRules Enabled="False" /> -->
+		<!-- <MultipleUploadStreams Enabled="True" Value="5" /> -->
 		<ConfigurationBackup Enabled="True" IsEncrypted="False" />
 	</GeneralConfiguration>
     <Proxies>
@@ -16,13 +16,17 @@
 		</SOBR>
 		<WinLocal />
 		<Cloud />
-		<DDBoost />
-		<ExaGrid />
+		<HPStoreOnceIntegration Uncompress="True" OneBackupFilePerVm="True" />
+		<DDBoost Uncompress="True" OneBackupFilePerVm="True" />
+		<ExaGrid Uncompress="False" OneBackupFilePerVm="True" MaxTaskCount="10" />
 		<SanSnapshotOnly />
-		<HPStoreOnceIntegration />
     </Repositories>
     <BackupJobs>
 		<BackupWindow Enabled="True" Start="10:00PM" Stop="4:00AM" />
+		<BackupCopyJob />
+		<BackupJob Target="DDBoost" Algorithm="Increment" RestorePoints="60" SyntethicFull="True" StgBlockSize="KbBlockSize4096" EnableDeduplication="False" CompressionLevel="5" />
+		<BackupJob Target="ExaGrid" Algorithm="Increment" StgBlockSize="KbBlockSize1024" EnableDeduplication="True" CompressionLevel="5" />
+		<BackupJob Target="HPStoreOnceIntegration" Algorithm="Increment" RestorePoints="7" SyntethicFull="True" StgBlockSize="KbBlockSize4096" EnableDeduplication="False" CompressionLevel="5" />
         <BackupJob Name="VMware - Veeam Explorers" Repository="SOBR - Locality" RestorePoints="14" SANIntegration="False">
             <AAIP Enabled="True">
             </AAIP>
@@ -30,10 +34,6 @@
                 <VM Name="demo-AD" />
                 <VM Name="demo-Oracle" />
             </BackupObjects>
-        </BackupJob>
-        <BackupJob Name="VMware - Backup from VVOL" Repository="SOBR - Performance" RestorePoints="14" SANIntegration="False">
-            <AAIP Enabled="False">
-            </AAIP>
         </BackupJob>
     </BackupJobs>
 </Configuration>
