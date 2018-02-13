@@ -1,5 +1,6 @@
 
 # Check number of VMs per job - no BCJ
+# the hard way
 # foreach ($job in Get-VBRBackup){ Write-Host $job.Name $job.vmCount } - looks at all backup files in the repository
 
 
