@@ -1,5 +1,7 @@
 
-# Check number of VMs per job - the hard way
+# Check number of VMs per job - no BCJ
+# foreach ($job in Get-VBRBackup){ Write-Host $job.Name $job.vmCount } - looks at all backup files in the repository
+
 
 $jobsArray = @('"Name","NumberOfVms"')
 $csvFile = ($MyInvocation.MyCommand.Path | Split-Path -Parent)+"\jobsFile.csv"
