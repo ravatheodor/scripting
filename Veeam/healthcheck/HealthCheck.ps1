@@ -33,7 +33,7 @@ $configFile = ($MyInvocation.MyCommand.Path | Split-Path -Parent)+"\"+$Configura
 
 $errorLog = ($MyInvocation.MyCommand.Path | Split-Path -Parent)+"\hc_error.log"
 
-<#
+
 Disconnect-VBRServer -ErrorAction SilentlyContinue
 try
 {
@@ -52,7 +52,7 @@ catch
     Write-Output "Failed to connect to VBR server"
     exit
 }
-#>
+
 
 # Check VBR configuration backup
 Write-Host -foreground white "...checking VBR configuration status"
