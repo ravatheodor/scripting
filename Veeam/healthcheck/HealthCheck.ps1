@@ -33,7 +33,7 @@ $configFile = ($MyInvocation.MyCommand.Path | Split-Path -Parent)+"\"+$Configura
 
 $errorLog = ($MyInvocation.MyCommand.Path | Split-Path -Parent)+"\hc_error.log"
 
-
+<#
 Disconnect-VBRServer -ErrorAction SilentlyContinue
 try
 {
@@ -52,7 +52,7 @@ catch
     Write-Output "Failed to connect to VBR server"
     exit
 }
-
+#>
 
 # Check VBR configuration backup
 Write-Host -foreground white "...checking VBR configuration status"
@@ -119,11 +119,11 @@ if ($config.Configuration.BackupJobs.BackupWindow.Enabled -match "True")
 $sobrArray = @('"SobrName","PolicyType","UsePerVMBackupFiles"')
 $csvFileParent = ($MyInvocation.MyCommand.Path | Split-Path -Parent)+"\SobrFile.csv"
 		
-$sobrExtentArray = @('"SobrName","Name","MaxTaskCount","numCPU","memoryGB","TotalSizeGB","FreeSpaceGB","OptimizeBlockAlign","Uncompress","OneBackupFilePerVm","IsAutoDetectAffinityProxies","IsRotatedDriveRepository","IsSanSnapshotOnly","HasBackupChainLengthLimitation","IsDedupStorage","SplitStoragesPerVm"')
+$sobrExtentArray = @('"SobrName","Name","MaxTaskCount","numCPU","memoryGB","TotalSizeGB","FreeSpaceGB","DataRateLimitMBps","OptimizeBlockAlign","Uncompress","OneBackupFilePerVm","IsAutoDetectAffinityProxies","IsRotatedDriveRepository","IsSanSnapshotOnly","HasBackupChainLengthLimitation","IsDedupStorage","SplitStoragesPerVm"')
 $csvFileChild = ($MyInvocation.MyCommand.Path | Split-Path -Parent)+"\SobrExtentFile.csv"
 
 Write-Host ""
-$sobrList = Get-VBRBackupRepository -ScaleOut
+$sobrList =  Get-VBRBackupRepository -ScaleOut
 if (!$sobrList)
 {
 	Write-Host -foreground white "...No SoBR found on" $config.Configuration.Server
@@ -145,6 +145,10 @@ if (!$sobrList)
 			Write-Host ""
 			Write-Host -foreground yellow "extent name: " $extent.Repository.Name
 			# Check parameters that should be False for SoBR
+			if ($extent.Repository.Options.CombinedDataRateLimit -gt 0)
+			{
+				Write-Host -foreground red " DataRateLimitMBps : " $extent.Repository.Options.CombinedDataRateLimit			
+			}
 			if ($extent.Repository.IsRotatedDriveRepository -match "True")
 			{
 				Write-Host -foreground red " IsRotatedDriveRepository: " $extent.Repository.IsRotatedDriveRepository
@@ -197,8 +201,8 @@ if (!$sobrList)
 				$memoryGB=-1
 			}			
 			# create array item 
-			#$sobrExtentArray = @('"SobrName","Name","MaxTaskCount","numCPU","memoryGB","TotalSizeGB","FreeSpaceGB","OptimizeBlockAlign","Uncompress","OneBackupFilePerVm","IsAutoDetectAffinityProxies","IsRotatedDriveRepository","IsSanSnapshotOnly","HasBackupChainLengthLimitation","IsDedupStorage","SplitStoragesPerVm"')
-			$item = $sobr.Name + "," + $extent.Repository.Name + "," + $extent.Repository.Options.MaxTaskCount + "," + $numCpu + "," + $memoryGB + "," + [math]::Round(($extent.Repository.Info.CachedTotalSpace)/(1024*1024*1024),1) + "," + [math]::Round(($extent.Repository.Info.CachedFreeSpace)/(1024*1024*1024),1) + "," + $extent.Repository.Options.OptimizeBlockAlign + "," + $extent.Repository.Options.Uncompress + "," + $extent.Repository.Options.OneBackupFilePerVm + "," + $extent.Repository.Options.IsAutoDetectAffinityProxies + "," + $extent.Repository.IsRotatedDriveRepository + "," + $extent.Repository.IsSanSnapshotOnly + "," + $extent.Repository.HasBackupChainLengthLimitation + "," + $extent.Repository.IsDedupStorage + "," + $extent.Repository.SplitStoragesPerVm  
+			#$sobrExtentArray = @('"SobrName","Name","MaxTaskCount","numCPU","memoryGB","TotalSizeGB","FreeSpaceGB","DataRateLimitMBps","OptimizeBlockAlign","Uncompress","OneBackupFilePerVm","IsAutoDetectAffinityProxies","IsRotatedDriveRepository","IsSanSnapshotOnly","HasBackupChainLengthLimitation","IsDedupStorage","SplitStoragesPerVm"')
+			$item = $sobr.Name + "," + $extent.Repository.Name + "," + $extent.Repository.Options.MaxTaskCount + "," + $numCpu + "," + $memoryGB + "," + [math]::Round(($extent.Repository.Info.CachedTotalSpace)/1GB,2) + "," + [math]::Round(($extent.Repository.Info.CachedFreeSpace)/1GB,2) + "," + $extent.Repository.Options.CombinedDataRateLimit + "," + $extent.Repository.Options.OptimizeBlockAlign + "," + $extent.Repository.Options.Uncompress + "," + $extent.Repository.Options.OneBackupFilePerVm + "," + $extent.Repository.Options.IsAutoDetectAffinityProxies + "," + $extent.Repository.IsRotatedDriveRepository + "," + $extent.Repository.IsSanSnapshotOnly + "," + $extent.Repository.HasBackupChainLengthLimitation + "," + $extent.Repository.IsDedupStorage + "," + $extent.Repository.SplitStoragesPerVm  
 			$sobrExtentArray += $item
 		}
 		Write-Host ""
@@ -215,7 +219,7 @@ if (!$sobrList)
 
 # Check repositories
 		
-$repoArray = @('"repoName","repoServerName","MaxTaskCount","numCPU","memoryGB","TotalSizeGB","FreeSpaceGB","OptimizeBlockAlign","Uncompress","OneBackupFilePerVm","IsAutoDetectAffinityProxies","IsRotatedDriveRepository","IsSanSnapshotOnly","HasBackupChainLengthLimitation","IsDedupStorage","SplitStoragesPerVm"')
+$repoArray = @('"repoName","repoServerName","MaxTaskCount","numCPU","memoryGB","TotalSizeGB","FreeSpaceGB","DataRateLimitMBps","OptimizeBlockAlign","Uncompress","OneBackupFilePerVm","IsAutoDetectAffinityProxies","IsRotatedDriveRepository","IsSanSnapshotOnly","HasBackupChainLengthLimitation","IsDedupStorage","SplitStoragesPerVm"')
 $csvFile = ($MyInvocation.MyCommand.Path | Split-Path -Parent)+"\repoFile.csv"
 
 Write-Host ""
@@ -234,6 +238,10 @@ if (!$repoList)
 		$numCpu = 0
 		$memoryGB = 0
 		$repoServerName = "N/A"
+		if ($repo.Options.CombinedDataRateLimit -gt 0)
+		{
+			Write-Host -foreground red " DataRateLimitMBps : " $repo.Options.CombinedDataRateLimit
+		}
 		if ($repo.IsRotatedDriveRepository -match "True")
 		{
 			Write-Host -foreground red " IsRotatedDriveRepository: " $repo.IsRotatedDriveRepository
@@ -295,8 +303,8 @@ if (!$repoList)
 		}
 			
 		# create array item 
-		#$repoArray = @('"repoName","repoServerName","MaxTaskCount","numCPU","memoryGB","TotalSizeGB","FreeSpaceGB","OptimizeBlockAlign","Uncompress","OneBackupFilePerVm","IsAutoDetectAffinityProxies","IsRotatedDriveRepository","IsSanSnapshotOnly","HasBackupChainLengthLimitation","IsDedupStorage","SplitStoragesPerVm"')
-		$item = $repo.Name + "," + $repoServerName + "," + $repo.Options.MaxTaskCount + "," + $numCpu + "," + $memoryGB + "," + [math]::Round(($repo.Info.CachedTotalSpace)/(1024*1024*1024),1) + "," + [math]::Round(($repo.Info.CachedFreeSpace)/(1024*1024*1024),1) + "," + $repo.Options.OptimizeBlockAlign + "," + $repo.Options.Uncompress + "," + $repo.Options.OneBackupFilePerVm + "," + $repo.Options.IsAutoDetectAffinityProxies + "," + $repo.IsRotatedDriveRepository + "," + $repo.IsSanSnapshotOnly + "," + $repo.HasBackupChainLengthLimitation + "," + $repo.IsDedupStorage + "," + $repo.SplitStoragesPerVm  
+		#$repoArray = @('"repoName","repoServerName","MaxTaskCount","numCPU","memoryGB","TotalSizeGB","FreeSpaceGB","DataRateLimitMBps","OptimizeBlockAlign","Uncompress","OneBackupFilePerVm","IsAutoDetectAffinityProxies","IsRotatedDriveRepository","IsSanSnapshotOnly","HasBackupChainLengthLimitation","IsDedupStorage","SplitStoragesPerVm"')
+		$item = $repo.Name + "," + $repoServerName + "," + $repo.Options.MaxTaskCount + "," + $numCpu + "," + $memoryGB + "," + [math]::Round(($repo.Info.CachedTotalSpace)/1GB,2) + "," + [math]::Round(($repo.Info.CachedFreeSpace)/1GB,2) + "," + $repo.Options.CombinedDataRateLimit + "," + $repo.Options.OptimizeBlockAlign + "," + $repo.Options.Uncompress + "," + $repo.Options.OneBackupFilePerVm + "," + $repo.Options.IsAutoDetectAffinityProxies + "," + $repo.IsRotatedDriveRepository + "," + $repo.IsSanSnapshotOnly + "," + $repo.HasBackupChainLengthLimitation + "," + $repo.IsDedupStorage + "," + $repo.SplitStoragesPerVm  
 		$repoArray += $item	
 	}
 	$repoArray | foreach { Add-Content -Path  $csvFile -Value $_ } 
@@ -547,25 +555,32 @@ foreach ($job in $allJobs)
 $jobsArray | foreach { Add-Content -Path  $csvFile -Value $_ } 
 
 
-$copyjobsArray = @('"Name","JobSize"')
+$copyJobsArray = @('"Name","JobSizeGB"')
 $csvFile = ($MyInvocation.MyCommand.Path | Split-Path -Parent)+"\copyJobsFile.csv"
 
 Write-Host ""
 Write-Host -foreground white "... calculating backup job size in GB "
 
 # check backup copy job sizes
-if ($config.Configuration.BackupJobs.BackupCopyJob.Enabled -match "True")
+
+foreach ($job in $allJobs)
 {
-	foreach ($job in $allJobs)
+	$jobSize = 0
+	if ($job.JobType -match "BackupSync")
 	{
-		$jobSize = 0
-		if ($job.JobType -match "BackupSync")
-		{
-			$jobSize = [math]::round($job.Info.includedSize/1GB - $job.Info.excludedSize/1GB,2)
-			Write-Host  $job.Name $jobSize"GB"
-			$item = $job.Name + "," + $jobSize
-			$jobsArray += $item 
-		}
+		$jobSize = [math]::round($job.Info.includedSize/1GB - $job.Info.excludedSize/1GB,2)
+		Write-Host  $job.Name $jobSize"GB"
+		#$copyJobsArray = @('"Name","JobSizeGB"')
+		$item = $job.Name + "," + $jobSize
+		$copyJobsArray += $item 
 	}
-	$jobsArray | foreach { Add-Content -Path  $csvFile -Value $_ } 
+	
 }
+if ($copyJobsArray.Length -gt 1)
+{
+	$copyJobsArray | foreach { Add-Content -Path  $csvFile -Value $_ } 
+} else
+{
+	Write-Host -foreground red "...no backup copy jobs are configured"
+}
+
