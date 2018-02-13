@@ -1,13 +1,13 @@
 <#
     .SYNOPSIS
-    HealthCheck is a health checking script for Veeam Backup and Replication 
+    HealthCheck is a environmnet analysis script for Veeam Backup and Replication
 	
     .DESCRIPTION
 	
     HealthCheck is a script that analysis the configuration of an existing
-	Veeam Backup and Replication environment. It takes as input configuration
-	settings defined in config.xml file residing in the same directory.
-	It outputs mismatches to console and logs all findings to csv files. 
+    Veeam Backup and Replication environment. It takes as input configuration
+    settings defined in config.xml file residing in the same directory.
+    It outputs mismatches to console and logs all findings to csv files. 
 	
     .EXAMPLE
     .\HealthCheck.ps1
