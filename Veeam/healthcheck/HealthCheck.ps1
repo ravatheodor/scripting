@@ -1,3 +1,27 @@
+<#
+    .SYNOPSIS
+    HealthCheck is a health checking script for Veeam Backup and Replication 
+	
+    .DESCRIPTION
+	
+    HealthCheck is a script that analysis the configuration of an existing
+	Veeam Backup and Replication environment. It takes as input configuration
+	settings defined in config.xml file residing in the same directory.
+	It outputs mismatches to console and logs all findings to csv files. 
+	
+    .EXAMPLE
+    .\HealthCheck.ps1
+    
+    .NOTES
+    Author: Razvan Ionescu
+    Last Updated: February 2018
+      
+    Requires:
+    Veeam Backup & Replication v9.5 Update 3
+    
+#> 
+
+
 Param (
     [string]$Configuration = "config.xml",
     [switch]$Touch
@@ -471,8 +495,10 @@ if (!$wanAccList)
 
 # Check jobs
 
-# Check number of VMs per job
-$jobsArray = @('"Name","NumberOfVms"')
+# Check number of VMs per job - no BCJ
+# foreach ($job in Get-VBRBackup){ Write-Host $job.Name $job.vmCount } - looks at all backup files in the repository
+
+$jobsArray = @('"Name","NumberOfVms","JobSizeGB"')
 $csvFile = ($MyInvocation.MyCommand.Path | Split-Path -Parent)+"\jobsFile.csv"
 
 Write-Host -foreground white "... counting VMs in backup and replica jobs "
@@ -482,6 +508,7 @@ foreach ($job in $allJobs)
 	if ($job.JobType -notmatch "BackupSync")
 	{	
 		$totalVMs = 0
+		$jobSize = 0
 		$jvm = ""
 		$objects = $job.GetObjectsInJob()
 		
@@ -508,12 +535,37 @@ foreach ($job in $allJobs)
 		}
 		# VM number correction
 		$totalVMs--
-		Write-Host  $job.Name  $totalVMs
-		#$jobsArray = @('"Name","NumberOfVms"')
-		$item = $job.Name + "," + $totalVMs
+		# job size 
+		$jobSize = [math]::round($job.Info.includedSize/1GB - $job.Info.excludedSize/1GB,2)
+		Write-Host $job.Name $totalVMs $jobSize"GB"
+		#$jobsArray = @('"Name","NumberOfVms","JobSizeGB"')
+		$item = $job.Name + "," + $totalVMs + "," + $jobSize
 		$jobsArray += $item 
 	}
+	
 }
 $jobsArray | foreach { Add-Content -Path  $csvFile -Value $_ } 
 
-# check backup job size
+
+$copyjobsArray = @('"Name","JobSize"')
+$csvFile = ($MyInvocation.MyCommand.Path | Split-Path -Parent)+"\copyJobsFile.csv"
+
+Write-Host ""
+Write-Host -foreground white "... calculating backup job size in GB "
+
+# check backup copy job sizes
+if ($config.Configuration.BackupJobs.BackupCopyJob.Enabled -match "True")
+{
+	foreach ($job in $allJobs)
+	{
+		$jobSize = 0
+		if ($job.JobType -match "BackupSync")
+		{
+			$jobSize = [math]::round($job.Info.includedSize/1GB - $job.Info.excludedSize/1GB,2)
+			Write-Host  $job.Name $jobSize"GB"
+			$item = $job.Name + "," + $jobSize
+			$jobsArray += $item 
+		}
+	}
+	$jobsArray | foreach { Add-Content -Path  $csvFile -Value $_ } 
+}
