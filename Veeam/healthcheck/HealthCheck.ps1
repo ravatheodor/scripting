@@ -238,6 +238,49 @@ if (!$repoList)
 		$numCpu = 0
 		$memoryGB = 0
 		$repoServerName = "N/A"
+		#  deduplication appliances checks
+		if ($repo.Type -match "HPStoreOnceIntegration")
+		{
+			if ($repo.Options.Uncompress -notmatch $config.Configuration.Repositories.HPStoreOnceIntegration.Uncompress)
+				{
+					Write-Host -foreground red "Uncompress: " $repo.Options.Uncompress "expected value: " $config.Configuration.Repositories.HPStoreOnceIntegration.Uncompress
+				}
+			if ($repo.Options.OneBackupFilePerVm -notmatch $config.Configuration.Repositories.HPStoreOnceIntegration.OneBackupFilePerVm)
+				{
+					Write-Host -foreground red "Per VM backup file : " $repo.Options.OneBackupFilePerVm "expected value: " $config.Configuration.Repositories.HPStoreOnceIntegration.OneBackupFilePerVm
+				}
+		} elseif ($repo.Type -match "DDBoost")
+		{
+			if ($repo.Options.Uncompress -notmatch $config.Configuration.Repositories.DDBoost.Uncompress)
+				{
+					Write-Host -foreground red "Uncompress: " $repo.Options.Uncompress "expected value: " $config.Configuration.Repositories.DDBoost.Uncompress
+				}
+			if ($repo.Options.OneBackupFilePerVm -notmatch $config.Configuration.Repositories.DDBoost.OneBackupFilePerVm)
+				{
+					Write-Host -foreground red "Per VM backup file : " $repo.Options.OneBackupFilePerVm "expected value: " $config.Configuration.Repositories.DDBoost.OneBackupFilePerVm
+				}
+		} elseif ($repo.Type -match "ExaGrid")
+		{
+			if ($repo.Options.Uncompress -notmatch $config.Configuration.Repositories.ExaGrid.Uncompress)
+				{
+					Write-Host -foreground red "Uncompress: " $repo.Options.Uncompress "expected value: " $config.Configuration.Repositories.ExaGrid.Uncompress
+				}
+			if ($repo.Options.OneBackupFilePerVm -notmatch $config.Configuration.Repositories.ExaGrid.OneBackupFilePerVm)
+				{
+					Write-Host -foreground red "Per VM backup file : " $repo.Options.OneBackupFilePerVm "expected value: " $config.Configuration.Repositories.ExaGrid.OneBackupFilePerVm
+				}
+			if ($repo.Options.MaxTaskCount -notmatch $config.Configuration.Repositories.ExaGrid.MaxTaskCount)
+				{
+					Write-Host -foreground red "MaxTaskCount : " $repo.Options.MaxTaskCount "expected value: " $config.Configuration.Repositories.ExaGrid.MaxTaskCount
+				}
+		} elseif ($repo.IsDedupStorage -match "True") 
+		{
+			if ($repo.Options.Uncompress -match "False")
+			{
+				Write-Host -foreground red "Uncompress: " $repo.Options.Uncompress "expected value: True"
+			}
+		}
+		
 		if ($repo.Options.CombinedDataRateLimit -gt 0)
 		{
 			Write-Host -foreground red " DataRateLimitMBps : " $repo.Options.CombinedDataRateLimit
@@ -253,14 +296,6 @@ if (!$repoList)
 		if ($repo.HasBackupChainLengthLimitation -match "True")
 		{
 			Write-Host -foreground red " HasBackupChainLengthLimitation: " $repo.HasBackupChainLengthLimitation
-		} 
-		if ($repo.IsDedupStorage -match "True")
-		{
-			Write-Host -foreground red " IsDedupStorage: " $repo.IsDedupStorage
-		} 
-		if ($repo.SplitStoragesPerVm -match "True")
-		{
-			Write-Host -foreground red " SplitStoragesPerVm: " $repo.SplitStoragesPerVm
 		} 
 		
 		Write-Host -foreground yellow " Max concurrent tasks: " $repo.Options.MaxTaskCount
