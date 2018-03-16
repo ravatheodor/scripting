@@ -1,6 +1,6 @@
 <#
     .SYNOPSIS
-    HealthCheck is a environmnet analysis script for Veeam Backup and Replication
+    HealthCheck is a environment analysis script for Veeam Backup and Replication
 
     .DESCRIPTION
 
