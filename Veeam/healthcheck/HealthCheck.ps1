@@ -13,9 +13,9 @@
     .\HealthCheck.ps1
 
     .NOTES
-    Version: 0.2
+    Version: 0.3
     Author: Razvan Ionescu
-    Last Updated: March 2018
+    Last Updated: April 2018
 
     Requires:
     Veeam Backup & Replication v9.5 Update 3
@@ -436,29 +436,64 @@ function checkBackupJob($config, $allJobs, $csvFile) {
   $jobsArray = @('"Name","NumberOfVms","JobSizeGB"')
   foreach ($job in $allJobs) {
   	if ($job.JobType -notmatch "BackupSync"){
+      Write-Host " ### processing job:" $job.Name
   		$totalVMs = 0
   		$jobSize = 0
   		$jvm = ""
   		$objects = $job.GetObjectsInJob()
+      $tagPathArray = @()
+      $excludedVmArray = @()
 
   		foreach ($object in $objects)	{
-  			$type = $object.GetObject().Type
-  			if ($type -eq "VM")	{
-  				$totalVMs++
-  			} elseif ($type -eq "Host")	{
-  				$jvm = Find-VBRViEntity -HostsAndClusters -Server (Get-VBRServer) | Where { $_.VmHostName -eq $object.Name }
-  			} elseif ($type -eq "Directory") {
-  				$jvm = Find-VBRViEntity -VMsAndTemplates -Server (Get-VBRServer) | Where { $_.VmFolderName -eq $object.Name }
-  			} else {
-  				Write-Host -foreground red "... skipping type " $type
-  			}
+        # $type = $object.GetObject().Type
+        $type = $object.GetObject().ViType
+        $platform = $object.GetObject().Platform.Platform
+        if ($object.Type -eq "Include") {
+    			if (($platform -eq "EHyperV" -and ($type -eq "VM" -or $type -eq "CSV")) -or ($platform -eq "EVmware" -and $type -eq "VirtualMachine"))	{
+    				$totalVMs++
+    			} elseif ($type -eq "Datastore") {
+            $dsName = $object.Name
+            $jvm = Find-VBRViEntity -DatastoresAndVMs -Server (Get-VBRServer) | Where { $_.Type -eq "VM" -and $_.Path -like "*$dsName*" }
+          } elseif ($type -eq "Host")	{
+    				$jvm = Find-VBRViEntity -HostsAndClusters -Server (Get-VBRServer) | Where { $_.VmHostName -eq $object.Name }
+    			} elseif ($type -eq "Folder") {
+    				$jvm = Find-VBRViEntity -VMsAndTemplates -Server (Get-VBRServer) | Where { $_.VmFolderName -eq $object.Name }
+    			} else {
+    				Write-Host -foreground red "... skipping type " $type
+    			}
+        } elseif ($object.Type -eq "Exclude") {
+          #check exclusions by tags
+          if ($type -eq "Tag") {
+            $tagPathArray += $object.Location
+          } elseif ($type -eq "VirtualMachine") {
+            $excludedVmArray += $object.Name
+          }
+        } else {
+          Write-Host -foreground red "... skipping Object type " $object.Type
+        }
   		}
 
+      foreach ($tagPath in $tagPathArray){
+          Write-Host " >>> exclusion tag" $tagPath
+          # $tagPath = (Find-VBRViEntity -Tags -name "Exclude from backups").Path
+          $excludedVM = Find-VBRViEntity -Tags | where {$_.Type -eq "VM" -and $_.path -like "$tagPath*"}
+          $excludedVmArray += $excludedVM.Name
+      }
+      #check for excluded VMs
   		foreach ($vm in $jvm) {
-  			$totalVMs++
+        if ($excludedVmArray -notcontains $vm.Name) {
+    			$totalVMs++
+          # Write-Host " " $vm.Name
+        }
+        else {
+          Write-Host -foreground yellow " found excluded VM:" $vm.Name
+        }
   		}
   		# VM number correction
-  		$totalVMs--
+      if (($platform -eq "EHyperV" -and $type -eq "VM") -or ($platform -eq "EVmware" -and $type -eq "VirtualMachine") )	{
+  		    $totalVMs--
+      }
+
   		# job size
   		$jobSize = [math]::round($job.Info.includedSize/1GB - $job.Info.excludedSize/1GB,2)
   		Write-Host $job.Name $totalVMs $jobSize"GB"
