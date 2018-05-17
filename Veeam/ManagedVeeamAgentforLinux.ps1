@@ -7,6 +7,14 @@
     creates a new protection group, asks for credentials and adds computers
     to the new protection group
 
+    variables:
+    Name of the protection group (for new needs to be unique)
+      $protectionGroupName = "Linux"
+    array of computers to add (IP or FQDN)
+      $newComputers = @("192.168.1.2","192.168.1.3")
+    computer rescan hour (only daily implemented)
+      $rescanTime = "17:30"
+
     .EXAMPLE
     .\ManagedVeeamAgentforLinux.ps1 -Method add
     .\ManagedVeeamAgentforLinux.ps1 -Method new
