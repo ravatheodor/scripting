@@ -20,7 +20,7 @@
     .\ManagedVeeamAgentforLinux.ps1 -Method new
 
     .NOTES
-    Version: 0.1
+    Version: 0.2
     Author: Razvan Ionescu
     Last Updated: May 2018
 
@@ -33,9 +33,12 @@ param(
 	[Parameter(Mandatory=$true)][string]$Method
 )
 
-$protectionGroupName = "Linux"
-$newComputers = @("192.168.1.2","192.168.1.3")
-$rescanTime = "17:30"
+$protectionGroupName = "CentOS laptops"
+$newComputers = @("192.168.1.2","192.168.1.3","192.168.1.4")
+$rescanPolicyType = "periodically" # other value: "periodically"; any other value defaults to "daily"
+$rescanTime = "16:30"
+$rescanPeriod = 12 # rescan period in hours for "periodically" - can be 1, 2, 3, 4, 6, 8, 12, 24
+$rebootComputer = "true" # any other value will not set -RebootIfRequired flag
 
 # Load PS modules
 Try {
@@ -75,15 +78,29 @@ function AddComputersToProtectionGroup($protectionGroupName,$newComputers) {
 }
 
 # create ProtectionGroup, create new credentials and add computers
-function NewProtectionGroup($protectionGroupName,$newComputers, $rescanTime) {
+function NewProtectionGroup($protectionGroupName, $newComputers, $rescanTime, $rescanPolicyType, $rescanPeriod, $rebootComputer) {
   Write-Host -foreground yellow "Enter credentials for computers in protection group " $protectionGroupName
   $creds = Get-Credential
   $newCreds = Add-VBRCredentials -Credential $creds -Description "powershell added creds for $protectionGroupName" -Type Linux
   $newComputersCreds = $newComputers | ForEach { New-VBRIndividualComputerCustomCredentials -HostName $_ -Credentials $newCreds}
   $newContainer = New-VBRIndividualComputerContainer -CustomCredentials $newComputersCreds
-  $dailyOptions = New-VBRDailyOptions -Type Everyday -Period $rescanTime
-  $scanSchedule = New-VBRProtectionGroupScheduleOptions -PolicyType Daily -DailyOptions  $dailyOptions
-  $deployment = New-VBRProtectionGroupDeploymentOptions -InstallAgent -UpgradeAutomatically
+	if ($rescanPolicyType -eq "daily") {
+		$dailyOptions = New-VBRDailyOptions -Type Everyday -Period $rescanTime
+		$scanSchedule = New-VBRProtectionGroupScheduleOptions -PolicyType Daily -DailyOptions  $dailyOptions
+	} elseif ($rescanPolicyType -eq "periodically") {
+		$periodicallyOptions = New-VBRPeriodicallyOptions -PeriodicallyKind Hours -FullPeriod $rescanPeriod
+		$scanSchedule = New-VBRProtectionGroupScheduleOptions -PolicyType Periodically -PeriodicallyOptions  $periodicallyOptions
+	} else {
+		Write-host -foreground red "Uknown rescan policy type" $rescanPolicyType
+		Write-host -foreground red "Using daily "
+		$dailyOptions = New-VBRDailyOptions -Type Everyday -Period $rescanTime
+		$scanSchedule = New-VBRProtectionGroupScheduleOptions -PolicyType Daily -DailyOptions  $dailyOptions
+	}
+	if ($rebootComputer -eq "true") {
+		$deployment = New-VBRProtectionGroupDeploymentOptions -InstallAgent -UpgradeAutomatically	-RebootIfRequired
+	} else {
+		$deployment = New-VBRProtectionGroupDeploymentOptions -InstallAgent -UpgradeAutomatically
+	}
   $protectionGroup = Add-VBRProtectionGroup -Name $protectionGroupName -Container $newContainer -ScheduleOptions $scanSchedule -DeploymentOptions $deployment
   # rescan and install
   Rescan-VBREntity -Entity $protectionGroup -Wait
@@ -105,6 +122,6 @@ if ($Method.ToLower() -like "add") {
   if (Get-VBRProtectionGroup -Name $protectionGroupName -ErrorAction SilentlyContinue) {
     Write-Host -foreground red "Protection group:" $protectionGroupName "already exists. Use another name for protection group."
   } else {
-    NewProtectionGroup -protectionGroupName $protectionGroupName -newComputers $newComputers -rescanTime $rescanTime
+    NewProtectionGroup -protectionGroupName $protectionGroupName -newComputers $newComputers -rescanTime $rescanTime -rescanPolicyType $rescanPolicyType -rescanPeriod $rescanPeriod -rebootComputer $rebootComputer
   }
 }
