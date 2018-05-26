@@ -12,9 +12,9 @@
 		.\vmData.ps1 -all
 
     .NOTES
-    Version: 0.2
+    Version: 0.3
     Author: Razvan Ionescu
-    Last Updated: March 2018
+    Last Updated: May 2018
 
     Requires:
     vCenter Server and PowerCLI
@@ -36,12 +36,15 @@ function Test-Parameters {
 	}
 }
 
-function GetVMData($v) {
+function GetVMData($v,$powerState) {
 	$vmResMemory = [math]::Round($v.ExtensionData.ResourceConfig.MemoryAllocation.Reservation/1024,2)
-	$vmMem = [math]::Round($v.MemoryGB,2)
-	$vmSwap = ($vmMem - $vmResMemory)
+	$vmMem = [math]::Round($v.MemoryMB/1024,2)
 	$vmUsedSpace = [math]::Round($v.UsedSpaceGB,2)
-	$vmUsedSpaceNoSwap = [math]::Round($v.UsedSpaceGB,2) - ($vmMem - $vmResMemory) # removing swap space from calculations
+	if ($v.PowerState -match "PoweredOn") {
+		$vmUsedSpaceNoSwap = $vmUsedSpace - $vmMem + $vmResMemory # removing swap space from calculations
+	} else {
+		$vmUsedSpaceNoSwap = $vmUsedSpace
+	}
 	$vmProvSpace = [math]::Round($v.ProvisionedSpaceGB,2) # swap space included
 	$vmName = $v.Name
 	$vmNoDisks = ($v | Get-HardDisk).count
@@ -61,7 +64,6 @@ $totalUsedSpace = 0
 $totalNoDisks = 0
 
 foreach ($v in get-vm) {
-	# for all VMs (on and off) comment out the if statement
 	if ($PowerState.ToLower() -match "on" -and $v.PowerState -match "PoweredOn") {
 		$hash = GetVMData -v $v
 		$item = $hash.Vm + "," + $hash.NoDisks + "," + $hash.UsedSpaceNoSwap + "," + $hash.UsedSpace + "," + $hash.ProvSpace
