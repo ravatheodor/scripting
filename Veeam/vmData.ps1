@@ -66,22 +66,15 @@ $totalNoDisks = 0
 foreach ($v in get-vm) {
 	if ($PowerState.ToLower() -match "on" -and $v.PowerState -match "PoweredOn") {
 		$hash = GetVMData -v $v
-		$item = $hash.Vm + "," + $hash.NoDisks + "," + $hash.UsedSpaceNoSwap + "," + $hash.UsedSpace + "," + $hash.ProvSpace
-		$vmData += $item
-
-		$totalUsedSpaceNoSwap += $hash.UsedSpaceNoSwap
-		$totalUsedSpace += $hash.UsedSpace
-		$totalNoDisks += $hash.NoDisks
-
 	} elseif ($PowerState.ToLower() -match "all") {
 		$hash = GetVMData -v $v
-		$item = $hash.Vm + "," + $hash.NoDisks + "," + $hash.UsedSpaceNoSwap + "," + $hash.UsedSpace + "," + $hash.ProvSpace
-		$vmData += $item
-
-		$totalUsedSpaceNoSwap += $hash.UsedSpaceNoSwap
-		$totalUsedSpace += $hash.UsedSpace
-		$totalNoDisks += $hash.NoDisks
 	}
+	$item = $hash.Vm + "," + $hash.NoDisks + "," + $hash.UsedSpaceNoSwap + "," + $hash.UsedSpace + "," + $hash.ProvSpace
+	$vmData += $item
+ # some totals
+	$totalUsedSpaceNoSwap += $hash.UsedSpaceNoSwap
+	$totalUsedSpace += $hash.UsedSpace
+	$totalNoDisks += $hash.NoDisks
 
 }
 $item = $totalNoDisks.ToString() + "," + $totalUsedSpaceNoSwap.ToString() + "," + $totalUsedSpace.ToString()
