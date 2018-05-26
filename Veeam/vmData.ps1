@@ -36,7 +36,7 @@ function Test-Parameters {
 	}
 }
 
-function GetVMData($v,$powerState) {
+function GetVMData($v) {
 	$vmResMemory = [math]::Round($v.ExtensionData.ResourceConfig.MemoryAllocation.Reservation/1024,2)
 	$vmMem = [math]::Round($v.MemoryMB/1024,2)
 	$vmUsedSpace = [math]::Round($v.UsedSpaceGB,2)
