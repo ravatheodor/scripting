@@ -44,6 +44,7 @@ function ConnectVBR($config) {
   }
   catch {
       Write-Output "Failed to connect to VBR server"
+      Add-Content -Path  $errorLog -Value "WMI Error for $($_.Exception.ItemName) : $($_.Exception.Message)"
       exit
   }
 }
