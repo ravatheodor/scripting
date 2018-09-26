@@ -1,17 +1,17 @@
-<Configuration Server="hq-vbr1.democenter.int" Username="USERNAME" Password="PASSWORD">
+<Configuration Server="hq-vbr1.democenter.int" Username="USERNAME" Password="PASSWORD"><!-- account needs access to VBR and WMI on VBR managed servers -->
 	<GeneralConfiguration>
 		<ParallelProcessing Enabled="True" />
+		<ConfigurationBackup Enabled="True" IsEncrypted="False" />
 		<!-- <StorageLatency Enabled="False" StopAssignValue="20" ThrottleValue="30" /> -->
 		<!-- <NetworkTrafficRules Enabled="False" /> -->
 		<!-- <MultipleUploadStreams Enabled="True" Value="5" /> -->
-		<ConfigurationBackup Enabled="True" IsEncrypted="False" />
 	</GeneralConfiguration>
-    <Proxies>
-        <ViProxy TransportMode="HotAdd" FailoverToNetwork="True" UseSsl="True" IsAutoVddkMode="True" IsAutoDetectDisks="True" IsAutoDetectAffinityRepositories="True" />
-		<HvProxy Type="HvOffhost" IsAutoDetectVolumes="True" />
-    </Proxies>
-    <Repositories>
-        <SOBR>
+	<Proxies>
+	    <ViProxy TransportMode="HotAdd" FailoverToNetwork="True" UseSsl="True" IsAutoVddkMode="True" IsAutoDetectDisks="True" IsAutoDetectAffinityRepositories="True" />
+			<HvProxy Type="HvOffhost" IsAutoDetectVolumes="True" />
+	</Proxies>
+	<Repositories>
+	  <SOBR>
 			<Extent IsRotatedDriveRepository="False" HasBackupChainLengthLimitation="False" IsSanSnapshotOnly="False" IsDedupStorage="False" SplitStoragesPerVm="False" />
 		</SOBR>
 		<WinLocal />
@@ -20,20 +20,16 @@
 		<DDBoost Uncompress="True" OneBackupFilePerVm="True" />
 		<ExaGrid Uncompress="False" OneBackupFilePerVm="True" MaxTaskCount="10" />
 		<SanSnapshotOnly />
-    </Repositories>
-    <BackupJobs>
+	</Repositories>
+	<BackupJobs>
 		<BackupWindow Enabled="True" Start="10:00PM" Stop="4:00AM" />
 		<BackupCopyJob />
 		<BackupJob Target="DDBoost" Algorithm="Increment" RestorePoints="60" SyntethicFull="True" StgBlockSize="KbBlockSize4096" EnableDeduplication="False" CompressionLevel="5" />
 		<BackupJob Target="ExaGrid" Algorithm="Increment" StgBlockSize="KbBlockSize1024" EnableDeduplication="True" CompressionLevel="5" />
 		<BackupJob Target="HPStoreOnceIntegration" Algorithm="Increment" RestorePoints="7" SyntethicFull="True" StgBlockSize="KbBlockSize4096" EnableDeduplication="False" CompressionLevel="5" />
-        <BackupJob Name="VMware - Veeam Explorers" Repository="SOBR - Locality" RestorePoints="14" SANIntegration="False">
-            <AAIP Enabled="True">
-            </AAIP>
-            <BackupObjects>
-                <VM Name="demo-AD" />
-                <VM Name="demo-Oracle" />
-            </BackupObjects>
-        </BackupJob>
-    </BackupJobs>
+    <BackupJob Name="VMware - Veeam Explorers" Repository="SOBR - Locality" RestorePoints="14" SANIntegration="False">
+	    <AAIP Enabled="True">
+	    </AAIP>
+    </BackupJob>
+	</BackupJobs>
 </Configuration>
