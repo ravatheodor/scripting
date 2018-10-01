@@ -9,13 +9,15 @@
     settings defined in config.xml file residing in the same directory.
     It outputs mismatches to console and logs all findings to csv files.
 
+    Should be run on VBR server as some functionality depends on that (checkVBRVersion)
+
     .EXAMPLE
     .\HealthCheck.ps1
 
     .NOTES
-    Version: 0.3
+    Version: 0.4
     Author: Razvan Ionescu
-    Last Updated: April 2018
+    Last Updated: October 2018
 
     Requires:
     Veeam Backup & Replication v9.5 Update 3
@@ -529,6 +531,28 @@ function checkBackupCopyJob($config, $allJobs, $csvFile) {
   }
 }
 
+function checkVBRVersion() {
+    $veeamDll = "VeeamDeploymentDll.dll"
+    Try {  
+       $vbrInstallPath = Get-ItemProperty -Path "HKLM:\Software\Veeam\Veeam Backup and Replication\" -Name "CorePath" -ea stop
+    } 
+    Catch {
+        Add-Content -Path  $errorLog -Value "WMI Error for $($_.Exception.ItemName) : $($_.Exception.Message)"
+    }
+    Try {
+       $dll = $vbrInstallPath.CorePath + "Packages\" +  $veeamDll
+       $item = Get-Item -Path $dll -ea stop
+       if ($item) {
+        return $item.VersionInfo.ProductVersion
+       } else {
+        return "novalue"
+       }
+    }
+    Catch {
+        Add-Content -Path  $errorLog -Value "WMI Error for $($_.Exception.ItemName) : $($_.Exception.Message)"
+    }
+}
+
 # End function definitions
 
 $configFileName = "config.xml"
@@ -539,6 +563,16 @@ $errorLog = ($MyInvocation.MyCommand.Path | Split-Path -Parent)+"\hc_error.log"
 # Connect backup server
 Write-Host -foreground white "...connecting backup server"
 ConnectVBR -config $configFileContent
+
+
+#check VBR version
+$curVersion = checkVBRVersion
+if ($curVersion -eq "novalue") {
+    Write-Host -foreground yellow "...installed version not found. Need to run on VBR server"
+ }
+elseif ($curVersion -ne $configFileContent.Configuration.Version) {
+    Write-Host -foreground yellow "...installed version" $curVersion " expecting " $configFileContent.Configuration.Version
+}
 
 # Check VBR configuration backup
 Write-Host -foreground white "...checking VBR configuration status"
