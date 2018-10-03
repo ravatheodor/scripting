@@ -15,7 +15,7 @@
     .\HealthCheck.ps1
 
     .NOTES
-    Version: 0.4
+    Version: 0.4.1
     Author: Razvan Ionescu
     Last Updated: October 2018
 
@@ -35,6 +35,10 @@ catch {
 # Start function definitions
 function ConnectVBR($config) {
   Disconnect-VBRServer -ErrorAction SilentlyContinue
+  if (-not (Test-Connection -ComputerName $config.Configuration.Server -Count 1 -ea SilentlyContinue)){
+    $srvName = $config.Configuration.Server
+    Add-Content -Path  $errorLog -Value "Cannot ping $srvName"
+  }
   try {
     if ($config.Configuration.Username -eq "USERNAME") {
       $vbrPsCredentials = Get-Credential -Message "Please enter username and password for connecting to VBR server"
@@ -46,7 +50,7 @@ function ConnectVBR($config) {
   }
   catch {
       Write-Output "Failed to connect to VBR server"
-      Add-Content -Path  $errorLog -Value "WMI Error for $($_.Exception.ItemName) : $($_.Exception.Message)"
+      Add-Content -Path  $errorLog -Value "Connection error $($_.Exception.ItemName) : $($_.Exception.Message)"
       exit
   }
 }
