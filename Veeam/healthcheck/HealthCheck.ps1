@@ -537,9 +537,8 @@ function checkBackupCopyJob($config, $allJobs, $csvFile) {
 
 function checkVBRVersion() {
     $veeamDll = "VeeamDeploymentDll.dll"
-    Try {  
        $vbrInstallPath = Get-ItemProperty -Path "HKLM:\Software\Veeam\Veeam Backup and Replication\" -Name "CorePath" -ea stop
-    } 
+    }
     Catch {
         Add-Content -Path  $errorLog -Value "WMI Error for $($_.Exception.ItemName) : $($_.Exception.Message)"
     }

@@ -1,0 +1,3 @@
+#cloud-config
+hostname: demo-ahv-linux-1
+fqdn: demo-ahv-linux-1.democenter.int

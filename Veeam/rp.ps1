@@ -1,7 +1,7 @@
 
 <#
     .SYNOPSIS
-    rp is is script that extacts last restore points for a job
+    rp is is script that extracts last restore points for a job
 
     .DESCRIPTION
 
@@ -153,4 +153,19 @@ foreach ($jId in $jobId) {
 			Write-Host "  job target:"$jId.TargetType
 		}
 	}
+}
+
+
+
+
+foreach ($backup in Get-VBRBackup) {
+  $vmNames = @()
+  foreach ($rp in (Get-VBRRestorePoint -Backup $backup)) {
+    $vmNames += $rp.vmName
+  }
+  $vmNames = $vmNames | select -uniq
+  write-host $backup.Name -ForegroundColor yellow
+  foreach ($vm in $vmNames) {
+    Write-Host $vm "has" (get-VBRRestorePoint -Backup $backup -Name $vm).Count "restore points "
+  }
 }

@@ -1,0 +1,11 @@
+vmName,srcPg,dstPg,reboot
+demo-server-1b7*,dpg-vmnetwork-17,dpg-demolan-2121,true
+demo-server-55c*,dpg-vmnetwork-17,dpg-demolan-2121,true
+demo-server-593*,dpg-vmnetwork-17,dpg-demolan-2121,true
+demo-server-848*,dpg-vmnetwork-17,dpg-demolan-2121,true
+demo-server-90d*,dpg-vmnetwork-17,dpg-demolan-2121,true
+demo-ws-319a9b0*,dpg-vmnetwork-17,dpg-demolan-2121,true
+demo-ws-446556a*,dpg-vmnetwork-17,dpg-demolan-2121,true
+demo-ws-765f3fa*,dpg-vmnetwork-17,dpg-demolan-2121,true
+demo-ws-d3363c3*,dpg-vmnetwork-17,dpg-demolan-2121,true
+demo-ws-edfffdd*,dpg-vmnetwork-17,dpg-demolan-2121,true

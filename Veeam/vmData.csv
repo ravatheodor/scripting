@@ -1,0 +1,152 @@
+"Name","NoDisks","UsedSpaceGB(noSwap)","UsedSpaceGB","ProvisionedSpaceGB"
+vcc-demolab.eudemo.veeam.local_8hhot4,0,0.00,0.00,1.19
+vcc-demolab.eudemo.veeam.local_lka25v,0,0.00,0.00,1.19
+Oracle_Lab,0,0.00,0.00,1.19
+vLab_Oracle,0,0.00,0.00,1.19
+Virtual_Lab_SQL,0,0.00,0.00,1.19
+EUDEMO DC02 (euaddc02),1,15.67,17.67,62.17
+EUDEMO DC01 (euaddc01),1,30.33,32.33,62.18
+Storage (datadomain),3,443.63,443.63,760.16
+Storage (storeonce),2,1015.81,1031.81,1086.73
+Storage (vnx),7,234.43,234.43,366.16
+eurepository,2,608.33,610.33,812.17
+phpIPAM Documentation (euphpipam),1,2.59,3.59,17.17
+VMware vCenter Server Appliance 6.5 U2 (vcsa),12,83.47,115.47,316.93
+VMware-vRealize Log Insight 4.5.0,3,37.65,45.65,68.67
+SCVMM 2016 (euscvmm02),2,50.07,58.07,148.21
+VAC GA (vac04),2,123.87,123.87,177.50
+VAO Production (vaoprod),2,93.65,93.65,163.67
+Veeam Backup Proxy (veeamproxy06),1,76.32,76.32,80.54
+Veeam Backup Proxy (veeamproxy04),1,98.52,98.52,102.73
+Veeam Backup Proxy (veeamproxy03),1,80.22,80.22,123.72
+VAO DR (vaodr),2,117.23,117.23,189.35
+VB for O365 v2.0 TP (o365v2),2,148.32,148.32,187.53
+VCC Server-Console (euvcc),3,600.52,600.52,646.23
+Storage (eurepolinux01),2,252.44,254.44,268.17
+Veeam Backup Proxy (veeamproxy01),1,40.13,44.13,44.27
+Veeam Backup Proxy (veeamproxy07),1,40.09,44.09,44.22
+VB for O365 v1.5 (o365),2,122.45,122.45,205.40
+VBR Server-Console (euvbr),6,1978.11,1978.11,2123.16
+Veeam ONE v9.5 U3 (euvone02),2,231.71,231.71,251.92
+euworkplacedemo,1,399.88,399.88,432.08
+euworkplace,1,59.92,67.92,108.17
+VMware NSX Manager 6.4.0 (nsx),1,54.13,54.13,60.16
+edge119-0,2,2.25,2.25,2.43
+edge117-0,2,2.23,2.23,2.42
+edge101-0,2,2.25,2.25,2.43
+edge122-0,2,2.25,2.25,2.44
+edge104-0,2,2.33,2.33,2.52
+edge114-0,2,2.30,2.30,2.48
+edge123-0,2,2.23,2.23,2.42
+edge120-0,2,2.23,2.23,2.42
+lgr_demolab-0,2,2.25,2.25,2.43
+edge103-0,2,2.26,2.26,2.45
+edge116-0,2,2.23,2.23,2.42
+edge121-0,2,2.26,2.26,2.45
+edge212-0,2,2.25,2.25,2.43
+edge105-0,2,2.27,2.27,2.45
+edge102-0,2,2.23,2.23,2.42
+nsxcon01-NSX-controller-17,1,71.45,71.45,71.64
+edge108-0,2,2.25,2.25,2.43
+edge112-0,2,2.23,2.23,2.42
+nsxcon02-NSX-controller-18,1,57.17,57.17,57.37
+Hyper-V 2016 (euhv04),1,172.20,172.20,220.42
+Hyper-V 2016 (euhv05),1,107.27,107.27,155.49
+Hyper-V Storage (euhvsan2),2,1642.45,1642.45,1648.66
+Hyper-V 2016 (euhv03),1,112.44,112.44,160.66
+Hyper-V 2012 R2 (euhv01),1,117.63,117.63,216.23
+ise_AD labdc11,1,40.17,40.17,64.19
+ise_2012R2 VBR,1,86.52,86.52,94.71
+Win2016VBR,1,101.15,101.15,109.36
+HV16,1,101.23,101.23,105.43
+ise_VBR9.5,1,40.12,40.12,44.32
+ise_ESXIA,1,0.30,0.30,6.19
+ise_WS16,1,53.59,53.59,57.80
+sk-vbr01,2,289.23,289.23,707.14
+sk-lan02-nutanix-ahv-ce,2,0.05,0.05,888.22
+ENTERPRISEMANAGER,1,51.62,51.62,308.21
+IL_ESX65,1,0.37,0.37,10.19
+ise_ESX6_Production,1,0.40,0.40,14.21
+VBR95u3BetaIL,1,91.33,91.33,95.53
+ise_VBR95,1,121.55,121.55,129.76
+VBRW2016,2,44.49,44.49,164.21
+ESX01,2,60.56,60.56,178.20
+VAC Test2,1,58.70,58.70,68.20
+DC,1,49.15,49.15,55.35
+ise_Admin,1,55.15,55.15,64.30
+Veeam BR,1,137.01,137.01,141.22
+Hyper-V Core,1,14.08,14.08,44.21
+ys_HV02_W2012R2,1,255.44,255.44,270.64
+ys_ESXi01,1,18.54,18.54,44.20
+ys_HV01_W2012R2,2,670.88,670.88,759.18
+ys_sshd_debian8,1,6.73,6.73,10.19
+ys_CC_ESXi01,1,6.18,6.18,48.19
+ys_CC_sshd_debian8,1,2.83,2.83,10.19
+ys_ESXi02,1,0.96,0.96,44.20
+ise_Roma,2,10.51,10.51,420.19
+uf-sp-vcc-vac,1,48.02,48.02,1008.21
+uf_sp_esxi01,1,0.77,0.77,508.20
+ise_ESXi 6.0 (2),1,12.35,12.35,105.19
+ise_DC2012R2,1,49.26,49.26,64.20
+Virtual VNX,4,40.36,40.36,237.22
+pv_t1-vbr,3,81.66,81.66,338.49
+pv_t2-vaw01cc (managed by sp-vac),1,40.27,40.27,44.48
+pv_sp-vcc,2,259.19,259.19,363.72
+pv_sp_o365v2,2,165.67,165.67,244.17
+pv_t1-vaw01 (managed by t1-vbr),3,52.58,52.58,144.19
+pv_t1-esxi01,2,29.81,29.81,90.20
+pv_t1-val01 (managed by t1-vbr),1,2.26,2.26,18.21
+ise_RepoSTOR2,1,38.75,38.75,416.20
+ise_RepoSTOR1,1,153.61,153.61,416.20
+ise_W16VBR_u3-beta,1,60.29,60.29,316.20
+ise_VAO,1,18.73,18.73,316.20
+ise_ep_win7_1,1,72.86,72.86,77.07
+ise_ESXi2,2,125.90,125.90,131.70
+ise_ep_2k12r2_1,1,45.51,45.51,64.19
+ise_esxi6.5-1,1,0.37,0.37,10.19
+ise_SCOM,1,15.74,15.74,316.20
+ise_consDesk,1,87.15,87.15,95.36
+ise_VBR_free,1,40.82,40.82,316.20
+ise_nst_vcc,1,113.90,113.90,316.21
+ise_PDC,1,76.40,76.40,80.60
+MV_ESXi01,1,0.38,0.38,10.20
+MV_Ubuntu01,1,25.96,25.96,28.15
+cc_esxihost_Prod_1,2,242.83,242.83,259.14
+ISE_ESX2,2,38.30,38.30,332.20
+ise_VBR_Tenant,1,89.60,89.60,97.80
+ise_ESX_AHV,2,18.77,18.77,218.20
+Network Extension Appliance IL-TestTrain(euesxi04),0,0.00,0.00,1.19
+IL-TestTrain_labdr03_replica,1,0.19,0.19,3.24
+labexchange01,2,217.18,217.18,307.83
+Demo VM on EMC,1,27.92,27.92,44.21
+labdr03,1,0.06,0.06,1.24
+webshop,1,10.15,10.15,20.69
+Demo VM on NFS,1,34.90,34.90,76.01
+labmssql01,2,112.48,112.48,175.28
+labmssql04,1,166.95,166.95,171.16
+labsharepoint04,1,100.17,100.17,104.37
+Oracle Linux (laboracle01),1,49.16,49.16,50.35
+labdr01,1,0.06,0.06,1.24
+labdr02,1,0.05,0.05,1.24
+labdr04,1,0.16,0.16,1.24
+lablinux01,1,7.30,7.30,10.19
+labdc01,1,41.82,41.82,62.19
+lablinux-recovery,1,0.01,0.01,6.19
+vaw02,1,48.61,48.61,64.19
+vaw01,1,17.42,17.42,64.19
+vaw05,1,39.93,39.93,64.19
+vaw04,1,97.73,97.73,101.92
+vaw-recovery,1,0.02,0.02,44.21
+lablinux02,1,13.93,13.93,25.19
+vaw03,1,41.62,41.62,64.19
+labmssql01_replica,2,103.88,103.88,618.74
+labdr03_replica,1,0.29,0.29,5.23
+labdr01_replica,1,0.28,0.28,5.23
+labdr04_replica,1,0.34,0.34,5.23
+labdr02_replica,1,0.29,0.29,5.23
+webshop_replica,1,14.20,14.20,100.69
+sk-win201601,1,40.27,40.27,44.47
+sk-ad02,1,121.29,121.29,125.50
+Virtual_Lab_SQL,0,0.00,0.00,1.19
+Virtual_Lab_HPE,0,0.00,0.00,1.19
+221,15083.97,15172.97
