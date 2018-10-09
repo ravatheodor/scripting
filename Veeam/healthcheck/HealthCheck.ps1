@@ -537,6 +537,7 @@ function checkBackupCopyJob($config, $allJobs, $csvFile) {
 
 function checkVBRVersion() {
     $veeamDll = "VeeamDeploymentDll.dll"
+    Try {
        $vbrInstallPath = Get-ItemProperty -Path "HKLM:\Software\Veeam\Veeam Backup and Replication\" -Name "CorePath" -ea stop
     }
     Catch {
