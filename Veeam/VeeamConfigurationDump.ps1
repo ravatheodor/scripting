@@ -10,11 +10,13 @@
     
     Script will check log folder exists and exit if it does not find it.
 
+    Opne PowerShell with Run as Administrator.
+
     .EXAMPLE
     .\VeeamConfigurationDump.ps1
 
     .NOTES
-    Version: 0.0.3
+    Version: 0.0.4
     Author: Razvan Ionescu
     Last Updated: December 2018
 
@@ -333,14 +335,9 @@ function Check-WANAcc($wanAccList, $logFile) {
   }
 
 #   numar de masini, volum de date, excluziuni
-#   target repo, backup proxy selection, restore points
-#   backup type -rev/inc/synt full/ active full 
 #   maintenance - health check enabled
 #   storage - inlinde dedup/exclude swap/exclude delted
 #   compression level/storage optimization
-#   backup file encryption 
-#   vmware tools quiescense
-#   CBT enabled 
 #   BfSS enabled, limit VMs, failover to standard backup, failover to primary storage snap
 
   function Check-JobConfiguration($job, $logFile) {
@@ -370,7 +367,27 @@ function Check-WANAcc($wanAccList, $logFile) {
         Add-Content -Path  $logFile -Value "`r`nRestore points: $($job.Options.BackupStorageOptions.RetainCycles)"
         Add-Content -Path  $logFile -Value "Backup type: $($job.Options.BackupTargetOptions.Algorithm)  Active full backup: $($job.Options.BackupStorageOptions.EnableFullBackup) Syntethic fulls: $($job.Options.BackupTargetOptions.TransformFullToSyntethic) "
         Add-Content -Path  $logFile -Value "Active full days: $($job.Options.BackupTargetOptions.FullBackupDays)  Synthetic full days: $($job.Options.BackupTargetOptions.TransformToSyntethicDays) - Incremental to synthetic: $($job.Options.BackupTargetOptions.TransformIncrementsToSyntethic)"
-
+        Add-Content -Path  $logFile -Value "`r`nAdavanced settings storage:"
+        Add-Content -Path  $logFile -Value " Enabled deduplication: $($job.Options.BackupStorageOptions.EnableDeduplication)"
+        Add-Content -Path  $logFile -Value " Compression level: $($job.Options.BackupStorageOptions.CompressionLevel)" # backup jobs: 0-none  4-dedup_friendly 5-optimal 6-high 9-extreme 
+        Add-Content -Path  $logFile -Value " Storage optimization - block size: $($job.Options.BackupStorageOptions.StgBlockSize)"
+       
+        if ($job.TypeToString -eq "Hyper-V Backup") {
+            Add-Content -Path  $logFile -Value " Exclude swap files: $($job.HvSourceOptions.ExcludeSwapFile)"
+            Add-Content -Path  $logFile -Value " Exclude deleted file blocks: $($job.HvSourceOptions.DirtyBlocksNullingEnabled)"
+            Add-Content -Path  $logFile -Value " `r`nChange block tracking: $($job.HvSourceOptions.UseChangeTracking)"
+            Add-Content -Path  $logFile -Value "Hyper-V Tools quiescing: $($job.HvSourceOptions.EnableHvQuiescence)"
+            Add-Content -Path  $logFile -Value "Crash consistent : $($job.HvSourceOptions.CanDoCrashConsistent)"
+            Add-Content -Path  $logFile -Value "Process multiple VMs per volume snapshot : $($job.HvSourceOptions.GroupSnapshotProcessing)"
+        } elseif ($job.TypeToString -eq "VMware Backup") {
+            Add-Content -Path  $logFile -Value " Exclude swap files: $($job.ViSourceOptions.ExcludeSwapFile)"
+            Add-Content -Path  $logFile -Value " Exclude deleted file blocks: $($job.ViSourceOptions.DirtyBlocksNullingEnabled)"
+            Add-Content -Path  $logFile -Value " `r`nChange block tracking: $($job.ViSourceOptions.UseChangeTracking)"
+            Add-Content -Path  $logFile -Value "VMware tools quiescing: $($job.ViSourceOptions.VMToolsQuiesce)"
+        } else {
+            Add-Content -Path  $logFile -Value " `r`nChange block tracking: $($job.ViSourceOptions.UseChangeTracking)"
+        }
+        Add-Content -Path  $logFile -Value " `r`nEncryption enabled: $($job.Options.BackupStorageOptions.StorageEncryptionEnabled)"
 }
   
 function Get-RunTime() {
@@ -511,4 +528,5 @@ Do {
         }
     }
 } While ($True)
+
 
