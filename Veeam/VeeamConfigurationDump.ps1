@@ -16,7 +16,7 @@
     .\VeeamConfigurationDump.ps1
 
     .NOTES
-    Version: 0.0.4
+    Version: 0.0.5
     Author: Razvan Ionescu
     Last Updated: December 2018
 
@@ -334,9 +334,8 @@ function Check-WANAcc($wanAccList, $logFile) {
     }
   }
 
-#   numar de masini, volum de date, excluziuni
+
 #   maintenance - health check enabled
-#   storage - inlinde dedup/exclude swap/exclude delted
 #   compression level/storage optimization
 #   BfSS enabled, limit VMs, failover to standard backup, failover to primary storage snap
 
@@ -350,7 +349,12 @@ function Check-WANAcc($wanAccList, $logFile) {
         Add-Content -Path  $logFile -Value "`r`n### JOB SUMMARY"
         Add-Content -Path  $logFile -Value "Target repo: $($job.GetTargetRepository().Name)"
         Add-Content -Path  $logFile -Value "Approximate job size: $($jobSize) GB"
-        Add-Content -Path  $logFile -Value "Job scheduled: $($job.Options.JobOptions.RunManually)"
+        if ($job.ScheduleOptions.NextRun) {
+            Add-Content -Path  $logFile -Value "Next run: $($job.ScheduleOptions.NextRun)"
+        } else {
+            Add-Content -Path  $logFile -Value "Job is not scheduled"
+        }
+
         Add-Content -Path  $logFile -Value "Last run status: $($job.GetLastResult())"
 
         Add-Content -Path  $logFile -Value "`r`n### JOB DETAILS"
@@ -390,6 +394,17 @@ function Check-WANAcc($wanAccList, $logFile) {
         Add-Content -Path  $logFile -Value " `r`nEncryption enabled: $($job.Options.BackupStorageOptions.StorageEncryptionEnabled)"
 }
   
+function Create-JobOverview($allJobs, $logFile) {
+    $jobsArray = @('"Name","JobType","TargetRepo","JobSizeGB","LastRunState","NextRun"')
+    foreach ($job in $allJobs) {
+        $jobSize = 0
+        $jobSize = [math]::round($job.Info.includedSize/1GB - $job.Info.excludedSize/1GB,2)
+        $item = $job.Name + "," + $job.TypeToString + "," +  $job.GetTargetRepository().Name + "," +  $jobSize + "," + $job.GetLastResult() + "," + $job.ScheduleOptions.NextRun
+        $jobsArray += $item
+    }
+    $jobsArray | foreach { Add-Content -Path  $logFile -Value $_ }
+}
+
 function Get-RunTime() {
     $rT = (Get-Date).ToShortDateString()
     $rT = $rT -replace '\/','_'
@@ -509,6 +524,11 @@ Do {
             $runTime = Get-RunTime
             Write-Host "... checking jobs"
             $allJobs = Get-VBRJob
+            # generate jobs summary
+            $logFileName = 'all_jobs_summary' 
+            $logFile = $logFilePath + $logFileName + '_' + $runTime + '.log'
+            Create-JobOverview -allJobs $allJobs -logFile $logFile
+            # job details
             foreach ($job in $allJobs) {
                 $jobName = $job.Name -replace '\/','_'
                 $jobName = $jobName -replace '\\','_'
