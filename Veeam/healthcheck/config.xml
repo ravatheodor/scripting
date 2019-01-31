@@ -2,7 +2,8 @@
 	<GeneralConfiguration>
 		<ParallelProcessing Enabled="True" />
 		<ConfigurationBackup Enabled="True" IsEncrypted="False" />
-		<!-- <StorageLatency Enabled="False" StopAssignValue="20" ThrottleValue="30" /> -->
+		<StorageLatency Enabled="False" StopAssignValue="20" ThrottleValue="30" />
+		<!-- <BackupPreferredNetworks Enabled="False"> -->
 		<!-- <NetworkTrafficRules Enabled="False" /> -->
 		<!-- <MultipleUploadStreams Enabled="True" Value="5" /> -->
 	</GeneralConfiguration>

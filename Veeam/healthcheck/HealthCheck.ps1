@@ -15,9 +15,9 @@
     .\HealthCheck.ps1
 
     .NOTES
-    Version: 0.4.1
+    Version: 0.5
     Author: Razvan Ionescu
-    Last Updated: October 2018
+    Last Updated: December 2018
 
     Requires:
     Veeam Backup & Replication v9.5 Update 3
@@ -66,7 +66,40 @@ function checkVBRConfigJob($config) {
   	Write-Host -foregroundcolor yellow "VBR Configuration encryption set to" $vbrConfigJob.EncryptionOptions.Enabled
   } else {
   	Write-Host -foregroundcolor red "VBR Configuration encryption set to" $vbrConfigJob.EncryptionOptions.Enabled "expected" $config.Configuration.GeneralConfiguration.ConfigurationBackup.IsEncrypted
-  }
+	}
+	$storageLatency = [Veeam.Backup.Core.SBackupOptions]::DatastoreParallelProcessingOptions
+	if (($storageLatency.LimitParallelTasksByDatastoreLatency -match "True") -And ($storageLatency.LimitParallelTasksByDatastoreLatency -match $config.Configuration.GeneralConfiguration.StorageLatency.Enabled)) {
+		Write-Host -foregroundcolor yellow "Storage latency control set to" $storageLatency.LimitParallelTasksByDatastoreLatency
+		if($storageLatency.MaxDatastoreLatencyMs -notmatch $config.Configuration.GeneralConfiguration.StorageLatency.StopAssignValue) {
+			Write-Host -foregroundcolor yellow "Datastore latency " $storageLatency.MaxDatastoreLatencyMs "ms expecting " $config.Configuration.GeneralConfiguration.StorageLatency.StopAssignValue "ms"
+		}
+		if($storageLatency.MinDatastoreLatency4ThrottleMs -notmatch $config.Configuration.GeneralConfiguration.StorageLatency.ThrottleValue) {
+			Write-Host -foregroundcolor yellow "Throttle latency " $storageLatency.MinDatastoreLatency4ThrottleMs "ms expecting " $config.Configuration.GeneralConfiguration.StorageLatency.ThrottleValue "ms"
+		}
+	} elseif (($storageLatency.LimitParallelTasksByDatastoreLatency -match "False") -and ($storageLatency.LimitParallelTasksByDatastoreLatency -match $config.Configuration.GeneralConfiguration.StorageLatency.Enabled)) {
+		Write-Host -foregroundcolor yellow "Storage latency control not enabled"
+	}	else {
+  	Write-Host -foregroundcolor red "Storage latency control enabled:" $storageLatency.LimitParallelTasksByDatastoreLatency "expected:" $config.Configuration.GeneralConfiguration.StorageLatency.Enabled
+	}
+	$trafficRules = [Veeam.Backup.Core.SBackupOptions]::GetTrafficThrottlingRules()
+	if ($trafficRules.GetRules()) {
+		foreach ($rule in $trafficRules.GetRules()) {
+			if ($rule.ThrottlingEnabled -match "True") {
+				Write-Host -foregroundcolor yellow " Network throttling is enabled between" $rule.FirstDiapason "and" $rule.FirstDiapason "at" $rule.SpeedLimit $rule.SpeedUnit
+			} 
+			if ($rule.EncryptionEnabled -match "True") {
+				Write-Host -foregroundcolor yellow " Encryption is enabled between" $rule.FirstDiapason "and" $rule.FirstDiapason
+			}
+		}
+	}
+	Write-Host -foregroundcolor yellow "Multiple download streams:" $trafficRules.UseMultipleDownloadStreams "number of streams:" $trafficRules.DownloadStreamCount
+	$backupPreferredNetworks = [Veeam.Backup.Core.SBackupOptions]::GetBackupTrafficNetworks()
+	if ($backupPreferredNetworks.UseNetworks -match "True") {
+		Write-Host -foregroundcolor yellow "Preferred backup networks are configured..."
+		foreach ($net in $backupPreferredNetworks.GetNetworks()) {
+			Write-Host -foregroundcolor yellow " Network:" ([System.Net.IPAddress]"$($net.NetworkAddress)").IPAddressToString "/" $net.CIDR
+		}	
+	} 
 }
 
 
@@ -573,8 +606,7 @@ ConnectVBR -config $configFileContent
 $curVersion = checkVBRVersion
 if ($curVersion -eq "novalue") {
     Write-Host -foreground yellow "...installed version not found. Need to run on VBR server"
- }
-elseif ($curVersion -ne $configFileContent.Configuration.Version) {
+ } elseif ($curVersion -ne $configFileContent.Configuration.Version) {
     Write-Host -foreground yellow "...installed version" $curVersion " expecting " $configFileContent.Configuration.Version
 }
 
