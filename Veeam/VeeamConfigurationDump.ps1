@@ -16,9 +16,9 @@
     .\VeeamConfigurationDump.ps1
 
     .NOTES
-    Version: 0.0.5
+    Version: 0.0.6
     Author: Razvan Ionescu
-    Last Updated: December 2018
+    Last Updated: January 2019
 
     Requires:
     Veeam Backup & Replication v9.5 Update 3
@@ -369,7 +369,7 @@ function Check-WANAcc($wanAccList, $logFile) {
 
 
         Add-Content -Path  $logFile -Value "`r`nRestore points: $($job.Options.BackupStorageOptions.RetainCycles)"
-        Add-Content -Path  $logFile -Value "Backup type: $($job.Options.BackupTargetOptions.Algorithm)  Active full backup: $($job.Options.BackupStorageOptions.EnableFullBackup) Syntethic fulls: $($job.Options.BackupTargetOptions.TransformFullToSyntethic) "
+        Add-Content -Path  $logFile -Value "Backup type: $($job.Options.BackupTargetOptions.Algorithm)  Active full backup: $($job.Options.BackupStorageOptions.EnableFullBackup) Synthetic fulls: $($job.Options.BackupTargetOptions.TransformFullToSyntethic) "
         Add-Content -Path  $logFile -Value "Active full days: $($job.Options.BackupTargetOptions.FullBackupDays)  Synthetic full days: $($job.Options.BackupTargetOptions.TransformToSyntethicDays) - Incremental to synthetic: $($job.Options.BackupTargetOptions.TransformIncrementsToSyntethic)"
         Add-Content -Path  $logFile -Value "`r`nAdavanced settings storage:"
         Add-Content -Path  $logFile -Value " Enabled deduplication: $($job.Options.BackupStorageOptions.EnableDeduplication)"
@@ -414,7 +414,103 @@ function Get-RunTime() {
     return $rT
 }
 
+function Get-TaskDuration {
+    param ($duration)
+    $days = ""
+    if ($duration.Days -gt 0) {
+      $days = "{0}:" -f $duration.Days
+    }
+    "{0}{1}:{2,2:D2}:{3,2:D2}" -f $days,$duration.Hours,$duration.Minutes,$duration.Seconds
+  }
+
+function Get-BackupSessions($hourstoCheck, $logFile) {
+
+    ### HTML ####
+    $title = "Session Details "
+$header = @"
+<html>
+<head>
+    <title>$title</title>
+        <style>  
+            body {font-family: Calibri; background-color:#ffffff;}
+            table {font-family: Calibri;width: 97%;font-size: 14;border-collapse:collapse;}
+            th {background-color: #e2e2e2;border: 1px solid #a7a9ac;border-bottom: none;}
+            td {background-color: #ffffff;border: 1px solid #a7a9ac;padding: 2px 3px 2px 3px;}
+        </style>
+</head>
+"@
+
+$bodyStart = @"
+<body>
+    <center>
+"@
+
+$subtitleHeader = @"
+<table>
+            <tr>
+                <td style="height: 35px;background-color: #c6e2ff;color: #000000;font-size: 16px;padding: 5px 0 0 15px;border-top: 5px solid white;border-bottom: none;">
+"@
+
+
+$subtitleEndTable = @"
+</td>
+            </tr>
+        </table>
+"@
+
+$bodyEnd = @"
+</body>
+"@
+
+    $allJobs = @()
+    $allJobs = Get-VBRJob
+    $allJobsBk = @($allJobs | ?{$_.JobType -eq "Backup"})
+    $allSessions = @()
+    $allSessions = Get-VBRBackupSession
+
+    # Backup Sessions Within Timeframe
+    $sessListBk = @($allSessions | ?{($_.EndTime -ge (Get-Date).AddHours(-$hourstoCheck) -or $_.CreationTime -ge (Get-Date).AddHours(-$hourstoCheck) -or $_.State -eq "Working") -and $_.JobType -eq "Backup"})
+    $tempSessListBk = $sessListBk
+    $sessListBk = @()
+    Foreach($job in $allJobsBk) {
+        $sessListBk += $tempSessListBk | ?{$_.Jobname -eq $job.name} | Sort-Object EndTime -Descending | Select-Object -First 1
+    }
+
+    # Backup Session Details
+    $totalXferBk = 0
+    $totalReadBk = 0
+    $sessListBk | %{$totalXferBk += $([Math]::Round([Decimal]$_.Progress.TransferedSize/1GB, 2))}
+    $sessListBk | %{$totalReadBk += $([Math]::Round([Decimal]$_.Progress.ReadSize/1GB, 2))}
+
+    $arrSessWFBk = $sessListBk | Sort Creationtime | Select @{Name="Job Name"; Expression = {$_.Name}},
+    @{Name="Backup Type"; Expression = {$_.SessionInfo.SessionAlgorithm}},
+    @{Name="Start Time"; Expression = {$_.CreationTime}},
+    @{Name="Stop Time"; Expression = {$_.EndTime}},
+    @{Name="Duration (HH:MM:SS)"; Expression = {Get-TaskDuration -duration $_.Progress.Duration}},                    
+    @{Name="Bottleneck"; Expression = {$_.Progress.BottleneckInfo.Bottleneck.ToString()}},
+    @{Name="Avg Speed (MB/s)"; Expression = {[Math]::Round($_.Progress.AvgSpeed/1MB,2)}},
+    @{Name="Total (GB)"; Expression = {[Math]::Round($_.Progress.ProcessedSize/1GB,2)}},
+    @{Name="Processed (GB)"; Expression = {[Math]::Round($_.Progress.ProcessedUsedSize/1GB,2)}},
+    @{Name="Data Read (GB)"; Expression = {[Math]::Round($_.Progress.ReadSize/1GB,2)}},
+    @{Name="Transferred (GB)"; Expression = {[Math]::Round($_.Progress.TransferedSize/1GB,2)}},
+    @{Name="Dedupe"; Expression = {
+    If ($_.Progress.ReadSize -eq 0) {0}
+    Else {([string][Math]::Round($_.BackupStats.GetDedupeX(),1)) +"x"}}},
+    @{Name="Compression"; Expression = {
+    If ($_.Progress.ReadSize -eq 0) {0}
+    Else {([string][Math]::Round($_.BackupStats.GetCompressX(),1)) +"x"}}},
+    @{Name="Details"; Expression = {
+    If ($_.GetDetails() -eq ""){$_ | Get-VBRTaskSession | %{If ($_.GetDetails()){$_.Name + ": " + ($_.GetDetails()).Replace("<br />","ZZbrZZ")}}}
+    Else {($_.GetDetails()).Replace("<br />","ZZbrZZ")}}}, Result
+    $bodySessWFBk = $arrSessWFBk | ConvertTo-HTML -Fragment
+    $bodySessWFBk = $subtitleHeader + "Last Backup Sessions" + $subtitleEndTable + $bodySessWFBk 
+
+    $htmlOut = $header + $bodyStart + $bodySessWFBk + $bodyEnd
+    $htmlOut |  Out-File $logFile 
+}
+
 ### END FUNCTION DEFINITION ###
+
 
 ### 
 # Check log folder
@@ -447,6 +543,7 @@ $menu=@"
 4 Check proxies
 5 Check WAN Accelerators
 6 Check jobs
+7 Get backup sessions
 Q Quit
  
 Select a task by number or Q to quit
@@ -538,6 +635,19 @@ Do {
             }
             Sleep -seconds 1
         }
+    "7" {   # Backup sessions 
+            $hoursToCheck = 24
+            $hoursToCheckInput = Read-Host "Enter interval for backup sessions or use default [$($hoursToCheck)]"
+            if ($hoursToCheckInput) {
+                $hoursToCheck = $hoursToCheckInput
+            }
+            $logFileName = "backup_sessions_last_$($HoursToCheck).html" 
+            $logFile = $logFilePath + $logFileName
+            Write-Host "... getting sessions"           
+            Get-BackupSessions -hourstoCheck $hoursToCheck -logFile $logFile
+
+            Sleep -seconds 1
+    }
     "Q" {
             Write-Host "Log files saved in $($logFileDir)" -ForegroundColor Cyan
             Return
