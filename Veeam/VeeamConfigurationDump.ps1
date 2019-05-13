@@ -16,7 +16,7 @@
     .\VeeamConfigurationDump.ps1
 
     .NOTES
-    Version: 0.0.6
+    Version: 0.0.7
     Author: Razvan Ionescu
     Last Updated: January 2019
 
@@ -406,11 +406,7 @@ function Create-JobOverview($allJobs, $logFile) {
 }
 
 function Get-RunTime() {
-    $rT = (Get-Date).ToShortDateString()
-    $rT = $rT -replace '\/','_'
-    $rT = $rT + "_" + (Get-Date).ToShortTimeString()
-    $rT = $rT -replace ':','_'
-    $rT = $rT -replace ' ','_'
+    $rt =  Get-Date -format MMddyyyy_hhmmss
     return $rT
 }
 
@@ -426,7 +422,7 @@ function Get-TaskDuration {
 function Get-BackupSessions($hourstoCheck, $logFile) {
 
     ### HTML ####
-    $title = "Session Details "
+$title = "Session Details "
 $header = @"
 <html>
 <head>
