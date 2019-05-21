@@ -16,9 +16,9 @@
     .\VeeamConfigurationDump.ps1
 
     .NOTES
-    Version: 0.0.7
+    Version: 0.0.8
     Author: Razvan Ionescu
-    Last Updated: January 2019
+    Last Updated: May 2019
 
     Requires:
     Veeam Backup & Replication v9.5 Update 3
@@ -202,7 +202,7 @@ function Check-SOBR($sobrList, $logFileSOBR, $logFileExtents ) {
                     $repoServerName = $repoServer.Name
                     # get cpu and memory
                     $srv = [Veeam.Backup.Core.CPhysicalHost]::GetByHost($extent.Repository.Info.HostId) 
-                    $numCPU = $srv.HardwareInfo.CPUCount * $srv.HardwareInfo.CoresCount 
+                    $numCPU = $srv.HardwareInfo.CoresCount
                     $memoryGB = [math]::Round($srv.HardwareInfo.PhysicalRAMTotal/1GB,2)
                 } else {
                     $numCpu=-1
@@ -244,7 +244,7 @@ function Check-Repo($repoList, $logFile) {
                 $repoServerName = $repoServer.Name
                 # get cpu and memory
                 $srv = [Veeam.Backup.Core.CPhysicalHost]::GetByHost($repo.Info.HostId) 
-                $numCPU = $srv.HardwareInfo.CPUCount * $srv.HardwareInfo.CoresCount 
+                $numCPU = $srv.HardwareInfo.CoresCount 
                 $memoryGB = [math]::Round($srv.HardwareInfo.PhysicalRAMTotal/1GB,2)
             } else {
                 $numCpu=-1
@@ -343,6 +343,7 @@ function Check-WANAcc($wanAccList, $logFile) {
         Add-Content -Path  $logFile -Value "$($job.Name) / $($job.TypeToString)"
         $jobSize = 0
         $proxyList = " Proxy list:"
+        $targetProxyList = " Target proxy list:"
 
         $jobSize = [math]::round($job.Info.includedSize/1GB - $job.Info.excludedSize/1GB,2)
         # jobConfigArray = @('"Name","JobType",TargetRepoName","LastRun","JobSize"')
@@ -367,6 +368,16 @@ function Check-WANAcc($wanAccList, $logFile) {
             Add-Content -Path  $logFile -Value "`r`nAutomatic proxy selection: $($job.Options.JobOptions.SourceProxyAutoDetect)"
         }
 
+        if ($job.JobType -eq "Replica") {
+            if (-Not $job.Options.JobOptions.TargetProxyAutoDetect) {
+                Add-Content -Path  $logFile -Value "`r`nAutomatic target proxy selection: $($job.Options.JobOptions.TargetProxyAutoDetect)"
+                Add-Content -Path  $logFile -Value " Selected proxies: $($job.GetTargetProxies().Count)"
+                foreach ($proxy in $job.GetTargetProxies()) { $targetProxyList += " " + $proxy.Name }
+                Add-Content -Path  $logFile -Value $targetProxyList
+            } else {
+                Add-Content -Path  $logFile -Value "`r`nAutomatic target proxy selection: $($job.Options.JobOptions.TargetProxyAutoDetect)"
+            }
+        }       
 
         Add-Content -Path  $logFile -Value "`r`nRestore points: $($job.Options.BackupStorageOptions.RetainCycles)"
         Add-Content -Path  $logFile -Value "Backup type: $($job.Options.BackupTargetOptions.Algorithm)  Active full backup: $($job.Options.BackupStorageOptions.EnableFullBackup) Synthetic fulls: $($job.Options.BackupTargetOptions.TransformFullToSyntethic) "
