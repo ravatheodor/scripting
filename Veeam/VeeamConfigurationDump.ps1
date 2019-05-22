@@ -16,7 +16,7 @@
     .\VeeamConfigurationDump.ps1
 
     .NOTES
-    Version: 0.0.8
+    Version: 0.0.9
     Author: Razvan Ionescu
     Last Updated: May 2019
 
@@ -274,7 +274,7 @@ function Check-ProxyVi($viProxyList, $logFile) {
             $viProxyServer = Get-VBRServer | Where {$_.Id -match $viProxy.Info.HostId}
             # get cpu and memory
             $srv = [Veeam.Backup.Core.CPhysicalHost]::GetByHost($viProxy.Info.HostId) 
-            $numCPU = $srv.HardwareInfo.CPUCount * $srv.HardwareInfo.CoresCount 
+            $numCPU = $srv.HardwareInfo.CoresCount 
             $memoryGB = [math]::Round($srv.HardwareInfo.PhysicalRAMTotal/1GB,2)
             # create array item
             # $viProxyArray = @('"Name","MaxTasksCount","numCPU","memoryGB","IsDisabled","TransportMode","FailoverToNetwork","UseSsl","IsAutoDetectAffinityRepositories","IsAutoVddkMode","IsAutoDetectDisks"')
@@ -298,7 +298,7 @@ function Check-ProxyHv($config, $hvProxyList, $logFile) {
             $hvProxyServer = Get-VBRServer | Where {$_.Id -match $hvProxy.HostId}
             # get cpu and memory
             $srv = [Veeam.Backup.Core.CPhysicalHost]::GetByHost($hvProxy.HostId) 
-            $numCPU = $srv.HardwareInfo.CPUCount * $srv.HardwareInfo.CoresCount 
+            $numCPU = $srv.HardwareInfo.CoresCount 
             $memoryGB = [math]::Round($srv.HardwareInfo.PhysicalRAMTotal/1GB,2)
             # create array item
             # $hvProxyArray = @('"Name","MaxTasksCount","numCPU","memoryGB","IsDisabled","Type","IsAutoDetectVolumes"')
@@ -323,7 +323,7 @@ function Check-WANAcc($wanAccList, $logFile) {
             $wanAccServer = Get-VBRServer | Where {$_.Id -match $wanAcc.HostId}
             # get cpu and memory
             $srv = [Veeam.Backup.Core.CPhysicalHost]::GetByHost($wanAcc.HostId) 
-            $numCPU = $srv.HardwareInfo.CPUCount * $srv.HardwareInfo.CoresCount 
+            $numCPU = $srv.HardwareInfo.CoresCount 
             $memoryGB = [math]::Round($srv.HardwareInfo.PhysicalRAMTotal/1GB,2)
             # create array item
             # $wanAccArray = @('"Name","ServerName","numCPU","memoryGB","TrafficPort","MgmtPort"')
@@ -430,7 +430,7 @@ function Get-TaskDuration {
     "{0}{1}:{2,2:D2}:{3,2:D2}" -f $days,$duration.Hours,$duration.Minutes,$duration.Seconds
   }
 
-function Get-BackupSessions($hourstoCheck, $logFile) {
+function Get-BackupSessions($jobType, $hourstoCheck, $logFile) {
 
     ### HTML ####
 $title = "Session Details "
@@ -469,14 +469,17 @@ $bodyEnd = @"
 </body>
 "@
 
+ 
     $allJobs = @()
     $allJobs = Get-VBRJob
-    $allJobsBk = @($allJobs | ?{$_.JobType -eq "Backup"})
+    #$allJobsBk = @($allJobs | ?{$_.JobType -eq "Backup"})
+    $allJobsBk = @($allJobs | ?{$_.JobType -eq $jobType})
     $allSessions = @()
     $allSessions = Get-VBRBackupSession
 
     # Backup Sessions Within Timeframe
-    $sessListBk = @($allSessions | ?{($_.EndTime -ge (Get-Date).AddHours(-$hourstoCheck) -or $_.CreationTime -ge (Get-Date).AddHours(-$hourstoCheck) -or $_.State -eq "Working") -and $_.JobType -eq "Backup"})
+    # $sessListBk = @($allSessions | ?{($_.EndTime -ge (Get-Date).AddHours(-$hourstoCheck) -or $_.CreationTime -ge (Get-Date).AddHours(-$hourstoCheck) -or $_.State -eq "Working") -and $_.JobType -eq "Backup"})
+    $sessListBk = @($allSessions | ?{($_.EndTime -ge (Get-Date).AddHours(-$hourstoCheck) -or $_.CreationTime -ge (Get-Date).AddHours(-$hourstoCheck) -or $_.State -eq "Working") -and $_.JobType -eq $jobType})
     $tempSessListBk = $sessListBk
     $sessListBk = @()
     Foreach($job in $allJobsBk) {
@@ -551,6 +554,7 @@ $menu=@"
 5 Check WAN Accelerators
 6 Check jobs
 7 Get backup sessions
+8 Get replica sessions
 Q Quit
  
 Select a task by number or Q to quit
@@ -651,7 +655,20 @@ Do {
             $logFileName = "backup_sessions_last_$($HoursToCheck).html" 
             $logFile = $logFilePath + $logFileName
             Write-Host "... getting sessions"           
-            Get-BackupSessions -hourstoCheck $hoursToCheck -logFile $logFile
+            Get-BackupSessions -jobType "Backup" -hourstoCheck $hoursToCheck -logFile $logFile
+
+            Sleep -seconds 1
+    }
+    "8" {   # Replica sessions 
+            $hoursToCheck = 24
+            $hoursToCheckInput = Read-Host "Enter interval for replica sessions or use default [$($hoursToCheck)]"
+            if ($hoursToCheckInput) {
+                $hoursToCheck = $hoursToCheckInput
+            }
+            $logFileName = "replica_sessions_last_$($HoursToCheck).html" 
+            $logFile = $logFilePath + $logFileName
+            Write-Host "... getting sessions"           
+            Get-BackupSessions -jobType "Replica" -hourstoCheck $hoursToCheck -logFile $logFile
 
             Sleep -seconds 1
     }
