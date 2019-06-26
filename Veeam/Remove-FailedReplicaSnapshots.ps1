@@ -22,7 +22,7 @@
     .\Remove-FailedReplicaSnapshots.ps1
 
     .NOTES
-    Version: 0.0.2
+    Version: 0.0.3
     Author: Razvan Ionescu
     Last Updated: June 2019
 
@@ -35,7 +35,7 @@ $vbrServer = "vbr1"
 $vcServer = "vc1"
 $status = "Failed"
 $reason = "Detected an invalid snapshot configuration."
-$replicaSuffix = "_replicabeta"
+$replicaSuffix = "_replica"
 
 # Connect to servers
 Add-PSSnapIn -Name VeeamPSSnapin
@@ -70,6 +70,7 @@ foreach($job in $jobs)
 Write-Host "`r`n`r`nTotal VMs found: $($vmList.Length)"
 Add-Content -Path  $logFile -Value "`r`n`r`nTotal VMs found: $($vmList.Length)"
 $vmList | foreach {
+    $replica = ""
     # replica suffix 
     $replicaName = $_ + $replicaSuffix
     # delete all snapshots for failed replica VM
@@ -84,7 +85,8 @@ $vmList | foreach {
     }
     # reconfigure replica VM disk mapping
     try {
-        $disk = $replica |  Get-HardDisk 
+        $disk = ""
+        $disk = $replica |  Get-HardDisk -ea Stop
         $disk | foreach {
             $diskPath = $_.Filename
             if ($diskPath -Match "-0000") {
@@ -110,4 +112,16 @@ $vmList | foreach {
         Write-Host "ERR: $($_.Exception.ItemName) : $($_.Exception.Message)"
         Add-Content -Path  $logFile -Value "ERR: $($_.Exception.ItemName) : $($_.Exception.Message)"
     }
- }
+    # consolidate disks
+    try {
+        $vm = Get-VM -Name $replicaName -ea Stop
+        if ($vm.Extensiondata.Runtime.ConsolidationNeeded) {
+            Write-Host "`r`n Consolidating VM: $($replicaName)"
+            Add-Content -Path  $logFile -Value "`r`n Consolidating VM: $($replicaName)"
+            $vm.ExtensionData.ConsolidateVMDisks_Task()
+        }
+    } catch {
+        Write-Host "ERR: $($_.Exception.ItemName) : $($_.Exception.Message)"
+        Add-Content -Path  $logFile -Value "ERR: $($_.Exception.ItemName) : $($_.Exception.Message)"
+    }
+}
