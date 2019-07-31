@@ -1,0 +1,5 @@
+System.Anonymous                       
+System.View                            
+System.Read                            
+VirtualMachine.Interact.AnswerQuestion 
+VirtualMachine.Interact.ConsoleInteract
