@@ -35,12 +35,14 @@
             <insert replication jobs table>, <insert backup copy jobs table>
         v1.1.4 - additional supported tags
             <insert tape backup jobs table>,<insert surebackup jobs table>,<insert backup infra table>
+         v1.1.5 - additional supported tags
+            <insert capacity extents table>
 
     .EXAMPLE
     .\VeeamConfigurationDump.ps1
 
     .NOTES
-    Version: 1.1.4
+    Version: 1.1.5
     Author: Razvan Ionescu
     Last Updated: August 2019
 
@@ -233,22 +235,20 @@ function Check-BackupWindow($backupWindowStart, $backupWindowEnd, $allJobs, $log
             } else {
                 $item = $job.Name + "," + $nextRunTime + "," + "True"
             }
+        } else {
+            $item = $job.Name + "," + "N/A" + "," + "N/A"
         }
         $backupWindowArray += $item
     }
     $backupWindowArray | foreach { Add-Content -Path  $logFile -Value $_ }
-
 }
 
 function Check-SOBR($sobrList, $logFileSOBR, $logFileExtents, $configReport, $sessionLog) {
     Write-Host -foreground white "... checking Scale Out Backup Repositories"
     Add-Content -Path  $sessionLog -Value "$(Get-TimeStamp) checking SoBR..."
     $sobrArray = @('Sobr Name,Policy Type,Use PerVM Backup Files')
-    if ($extendedLogging) { 
-        $sobrExtentArray = @('Sobr Name,Name,Max Task Count,Num CPU,Memory GB,Total Size GB,Free Space GB,Data Rate Limit MBps,Optimize Block Align,Uncompress,One Backup File Per Vm,Is Auto Detect Affinity Proxies,Is Rotated Drive Repository,Is San Snapshot Only,Has Backup Chain Length Limitation,Is Dedup Storage,Split Storages Per Vm')
-    } else {
-        $sobrExtentArray = @('Sobr Name,Name,Max Task Count,Num CPU,Memory GB,Total Size GB,Free Space GB,Data Rate Limit MBps')
-    }
+    
+    $sobrExtentArray = @('Sobr Name,Name,Max Task Count,Num CPU,Memory GB,Total Size GB,Free Space GB,Data Rate Limit MBps,Backup File Per Vm,Optimize Block Align,Uncompress,Is Auto Detect Affinity Proxies,Is Rotated Drive Repository,Is San Snapshot Only,Has Backup Chain Length Limitation,Is Dedup Storage,Split Storages Per Vm')
 
     if (!$sobrList) {
         Write-Host -foreground white "WARN: no SoBR found on" $config.Configuration.Server
@@ -270,12 +270,9 @@ function Check-SOBR($sobrList, $logFileSOBR, $logFileExtents, $configReport, $se
                     $memoryGB=-1
                 }
                 # create array item
-                #$sobrExtentArray = @('"SobrName","Name","MaxTaskCount","numCPU","memoryGB","TotalSizeGB","FreeSpaceGB","DataRateLimitMBps","OptimizeBlockAlign","Uncompress","OneBackupFilePerVm","IsAutoDetectAffinityProxies","IsRotatedDriveRepository","IsSanSnapshotOnly","HasBackupChainLengthLimitation","IsDedupStorage","SplitStoragesPerVm"')
-                if ($extendedLogging) { 
-                    $item = $sobr.Name + "," + $extent.Repository.Name + "," + $extent.Repository.Options.MaxTaskCount + "," + $numCpu + "," + $memoryGB + "," + [math]::Round(($extent.Repository.Info.CachedTotalSpace)/1GB,2) + "," + [math]::Round(($extent.Repository.Info.CachedFreeSpace)/1GB,2) + "," + $extent.Repository.Options.CombinedDataRateLimit + "," + $extent.Repository.Options.OptimizeBlockAlign + "," + $extent.Repository.Options.Uncompress + "," + $extent.Repository.Options.OneBackupFilePerVm + "," + $extent.Repository.Options.IsAutoDetectAffinityProxies + "," + $extent.Repository.IsRotatedDriveRepository + "," + $extent.Repository.IsSanSnapshotOnly + "," + $extent.Repository.HasBackupChainLengthLimitation + "," + $extent.Repository.IsDedupStorage + "," + $extent.Repository.SplitStoragesPerVm
-                } else {
-                    $item = $sobr.Name + "," + $extent.Repository.Name + "," + $extent.Repository.Options.MaxTaskCount + "," + $numCpu + "," + $memoryGB + "," + [math]::Round(($extent.Repository.Info.CachedTotalSpace)/1GB,2) + "," + [math]::Round(($extent.Repository.Info.CachedFreeSpace)/1GB,2) + "," + $extent.Repository.Options.CombinedDataRateLimit
-                }
+                #$sobrExtentArray = @('Sobr Name,Name,Max Task Count,Num CPU,Memory GB,Total Size GB,Free Space GB,Data Rate Limit MBps,Backup File Per Vm,Optimize Block Align,Uncompress,Is Auto Detect Affinity Proxies,Is Rotated Drive Repository,Is San Snapshot Only,Has Backup Chain Length Limitation,Is Dedup Storage,Split Storages Per Vm')
+                $item = $sobr.Name + "," + $extent.Repository.Name + "," + $extent.Repository.Options.MaxTaskCount + "," + $numCpu + "," + $memoryGB + "," + [math]::Round(($extent.Repository.Info.CachedTotalSpace)/1GB,2) + "," + [math]::Round(($extent.Repository.Info.CachedFreeSpace)/1GB,2) + "," + $extent.Repository.Options.CombinedDataRateLimit + "," + $extent.Repository.Options.OneBackupFilePerVm + "," + $extent.Repository.Options.OptimizeBlockAlign + "," + $extent.Repository.Options.Uncompress + "," + $extent.Repository.Options.IsAutoDetectAffinityProxies + "," + $extent.Repository.IsRotatedDriveRepository + "," + $extent.Repository.IsSanSnapshotOnly + "," + $extent.Repository.HasBackupChainLengthLimitation + "," + $extent.Repository.IsDedupStorage + "," + $extent.Repository.SplitStoragesPerVm
+
                 $sobrExtentArray += $item
             }
             $sobrExtentArray | foreach { Add-Content -Path  $logFileExtents -Value $_ }
@@ -289,12 +286,30 @@ function Check-SOBR($sobrList, $logFileSOBR, $logFileExtents, $configReport, $se
     }
   }
 
-function Check-Repo($repoList, $logFile, $configReport) {
-    if ($extendedLogging) { 
-        $repoArray = @('Repo Name,Repo Server Name,Max Task Count,Num CPU,Memory GB,Total Size GB,Free Space GB,Data Rate Limit MBps,Optimize Block Align,Uncompress,One Backup File Per Vm,Is Auto Detect Affinity Proxies,Is Rotated Drive Repository,Is San Snapshot Only,Has Backup Chain Length Limitation,Is Dedup Storage,Split Storages Per Vm')
-    } else {
-        $repoArray = @('Repo Name,Repo Server Name,Max Task Count,Num CPU,Memory GB,Total Size GB,Free Space GB,Data Rate Limit MBps')
+function Check-SOBRCapacityExtents ($capacityTierExtents, $logFile, $sessionLog) {
+    Write-Host -foreground white "... checking Scale Out Backup Repositories capacity extents"
+    Add-Content -Path  $sessionLog -Value "$(Get-TimeStamp) checking SoBR capacity extents..."
+    $capTierArray = @('Extent Name,Sobr Name,Gateway Server,Is Size Limited,Size Limit GB')
+
+    foreach ($extent in $capacityTierExtents) {
+        if ($extent) {
+            $sobrName = (Get-VBRBackupRepository -ScaleOut  | Where-Object {$_.Id -eq  $extent.ParentID.Guid}).Name      
+            if ($extent.Repository.SizeLimitEnabled) {
+                $sizeLimit = $extent.Repository.SizeLimit
+            } else {
+                $sizeLimit = "N/A"
+            }
+    
+            $item = $extent.Repository.Name + "," + $sobrName + "," +  $extent.Repository.GatewayServer.Name + "," +  $extent.Repository.SizeLimitEnabled + "," +  $sizeLimit
+            $capTierArray += $item
+        }
     }
+    $capTierArray | foreach { Add-Content -Path  $logFile -Value $_ }
+}
+function Check-Repo($repoList, $logFile, $configReport) {
+
+    $repoArray = @('Repo Name,Repo Server Name,Max Task Count,Num CPU,Memory GB,Total Size GB,Free Space GB,Data Rate Limit MBps,Backup File Per Vm,Optimize Block Align,Uncompress,Is Auto Detect Affinity Proxies,Is Rotated Drive Repository,Is San Snapshot Only,Has Backup Chain Length Limitation,Is Dedup Storage,Split Storages Per Vm')
+
     Write-Host -foreground white "... checking backup repositories"
     Add-Content -Path  $sessionLog -Value "$(Get-TimeStamp) checking backup repositories"
     if (!$repoList) {
@@ -319,12 +334,9 @@ function Check-Repo($repoList, $logFile, $configReport) {
                 $repoServerName="N/A"
             }
             # create array item
-            #$repoArray = @('Repo Name,Repo Server Name,Max Task Count,Num CPU,Memory GB,Total Size GB,Free Space GB,Data Rate Limit MBps')
-            if ($extendedLogging) { 
-                $item = $repo.Name + "," + $repoServerName + "," + $repo.Options.MaxTaskCount + "," + $numCpu + "," + $memoryGB + "," + [math]::Round(($repo.Info.CachedTotalSpace)/1GB,2) + "," + [math]::Round(($repo.Info.CachedFreeSpace)/1GB,2) + "," + $repo.Options.CombinedDataRateLimit + "," + $repo.Options.OptimizeBlockAlign + "," + $repo.Options.Uncompress + "," + $repo.Options.OneBackupFilePerVm + "," + $repo.Options.IsAutoDetectAffinityProxies + "," + $repo.IsRotatedDriveRepository + "," + $repo.IsSanSnapshotOnly + "," + $repo.HasBackupChainLengthLimitation + "," + $repo.IsDedupStorage + "," + $repo.SplitStoragesPerVm
-            } else {
-                $item = $repo.Name + "," + $repoServerName + "," + $repo.Options.MaxTaskCount + "," + $numCpu + "," + $memoryGB + "," + [math]::Round(($repo.Info.CachedTotalSpace)/1GB,2) + "," + [math]::Round(($repo.Info.CachedFreeSpace)/1GB,2) + "," + $repo.Options.CombinedDataRateLimit
-            }
+            #$repoArray = @('Repo Name,Repo Server Name,Max Task Count,Num CPU,Memory GB,Total Size GB,Free Space GB,Data Rate Limit MBps,Backup File Per Vm,Optimize Block Align,Uncompress,Is Auto Detect Affinity Proxies,Is Rotated Drive Repository,Is San Snapshot Only,Has Backup Chain Length Limitation,Is Dedup Storage,Split Storages Per Vm')
+            $item = $repo.Name + "," + $repoServerName + "," + $repo.Options.MaxTaskCount + "," + $numCpu + "," + $memoryGB + "," + [math]::Round(($repo.Info.CachedTotalSpace)/1GB,2) + "," + [math]::Round(($repo.Info.CachedFreeSpace)/1GB,2) + "," + $repo.Options.CombinedDataRateLimit + "," + $repo.Options.OneBackupFilePerVm + "," + $repo.Options.OptimizeBlockAlign + "," + $repo.Options.Uncompress + "," + $repo.Options.IsAutoDetectAffinityProxies + "," + $repo.IsRotatedDriveRepository + "," + $repo.IsSanSnapshotOnly + "," + $repo.HasBackupChainLengthLimitation + "," + $repo.IsDedupStorage + "," + $repo.SplitStoragesPerVm
+
             $repoArray += $item
         }
         $repoArray | foreach { Add-Content -Path  $logFile -Value $_ }
@@ -334,12 +346,9 @@ function Check-Repo($repoList, $logFile, $configReport) {
 function Check-ProxyVi($viProxyList, $logFile, $configReport, $sessionLog) {
     Write-Host -foreground white "... checking VMware proxies"
     Add-Content -Path  $sessionLog -Value "$(Get-TimeStamp) checking VMware proxies"
-    # extended logging
-    if ($extendedLogging) {
-        $viProxyArray = @('Name,Max Tasks Count,Num CPU,Memory GB,Is Disabled,Transport Mode,Failover To Network,Use Ssl,Is Auto Detect Affinity Repositories,Is Auto Vddk Mode,Is Auto Detect Disks')
-    } else {
-        $viProxyArray = @('Name,Max Tasks Count,Num CPU,Memory GB,Is Disabled,Transport Mode,Failover To Network,Use Ssl')
-    }
+
+    $viProxyArray = @('Name,Max Tasks Count,Num CPU,Memory GB,Is Disabled,Transport Mode,Failover To Network,Use Ssl,Is Auto Detect Affinity Repositories,Is Auto Vddk Mode,Is Auto Detect Disks')
+
     if (!$viProxyList)  {
         Write-Host -foreground white "WARN: no VMware proxy found"
         Add-Content -Path  $sessionLog -Value "$(Get-TimeStamp) WARN: no VMware proxy found"
@@ -352,12 +361,7 @@ function Check-ProxyVi($viProxyList, $logFile, $configReport, $sessionLog) {
             $numCPU = $srv.HardwareInfo.CoresCount 
             $memoryGB = [math]::Round($srv.HardwareInfo.PhysicalRAMTotal/1GB,2)
             # create array item
-            # $viProxyArray = @('Name,Max Tasks Count,Num CPU,Memory GB,Is Disabled,Transport Mode,Failover To Network,Use Ssl')
-            if ($extendedLogging) {
-                $item = $viProxy.Name + "," + $viProxy.Options.MaxTasksCount + "," + $numCpu + "," + $memoryGB + "," + $viProxy.IsDisabled + "," + $viProxy.Options.TransportMode + "," + $viProxy.Options.FailoverToNetwork + "," + $viProxy.Options.UseSsl + "," + $viProxy.Options.IsAutoDetectAffinityRepositories  + "," + $viProxy.Options.IsAutoVddkMode  + "," + $viProxy.Options.IsAutoDetectDisks
-            } else {
-                $item = $viProxy.Name + "," + $viProxy.Options.MaxTasksCount + "," + $numCpu + "," + $memoryGB + "," + $viProxy.IsDisabled + "," + $viProxy.Options.TransportMode + "," + $viProxy.Options.FailoverToNetwork + "," + $viProxy.Options.UseSsl
-            }
+            $item = $viProxy.Name + "," + $viProxy.Options.MaxTasksCount + "," + $numCpu + "," + $memoryGB + "," + $viProxy.IsDisabled + "," + $viProxy.Options.TransportMode + "," + $viProxy.Options.FailoverToNetwork + "," + $viProxy.Options.UseSsl + "," + $viProxy.Options.IsAutoDetectAffinityRepositories  + "," + $viProxy.Options.IsAutoVddkMode  + "," + $viProxy.Options.IsAutoDetectDisks
             $viProxyArray += $item
         }
         $viProxyArray | foreach { Add-Content -Path $logFile -Value $_ }
@@ -522,7 +526,11 @@ function Check-WANAcc($wanAccList, $logFile, $configReport, $sessionLog) {
             Add-Content -Path  $logFile -Value " `r`nEncryption enabled: $($job.Options.BackupStorageOptions.StorageEncryptionEnabled)"
     
         } 
-        
+        if ($job.TypeToString -eq "File Copy") {
+            $backupRepo = $job.GetTargetHost().Name
+        } else {
+            $backupRepo = $job.GetTargetRepository().Name
+        } 
         # standard output to CSV file
         # 'Job Name,Job Type,Target Repo,Job Size,Last Run Status,Next Run,
         #  Restore Points,Src Proxy Auto,Src Proxy #,Src Proxy List,
@@ -530,7 +538,7 @@ function Check-WANAcc($wanAccList, $logFile, $configReport, $sessionLog) {
         #  Active full backups,Synthetic fulls,
         #  Dedup,Compression,Block Size,
         #  Swap files,Delete blocks,CBT,Tools Quiesce,Encryption'
-        $item = $job.Name + ',' + $job.TypeToString + ',' + $job.GetTargetRepository().Name + ',' + $jobSize + ',' + $lastRunStatus + ',' + $nextRun `
+        $item = $job.Name + ',' + $job.TypeToString + ',' + $backupRepo + ',' + $jobSize + ',' + $lastRunStatus + ',' + $nextRun `
                 + ',' + $job.Options.BackupStorageOptions.RetainCycles + ',' + $sourceProxyAutoSelection + ',' + $sourceProxyNo + ',' + $sourceProxyList `
                 + ',' + $targetProxyAutoSelection + ',' + $targetProxyNo + ',' + $targetProxyList + ',' + $job.Options.BackupTargetOptions.Algorithm `
                 + ',' + $job.Options.BackupStorageOptions.EnableFullBackup + ',' + $job.Options.BackupTargetOptions.TransformFullToSyntethic `
@@ -557,7 +565,12 @@ function Create-JobOverview($allJobs, $allSessions, $logFile, $configReport, $se
         } else {
             $lastRunStatus = $job.GetLastResult()
         }
-        $item = $job.Name + "," + $job.TypeToString + "," +  $job.GetTargetRepository().Name + "," +  $jobSize + "," +  $job.Options.BackupStorageOptions.RetainCycles `
+        if ($job.TypeToString -eq "File Copy") {
+            $backupRepo = $job.GetTargetHost().Name
+        } else {
+            $backupRepo = $job.GetTargetRepository().Name
+        } 
+        $item = $job.Name + "," + $job.TypeToString + "," + $backupRepo + "," +  $jobSize + "," +  $job.Options.BackupStorageOptions.RetainCycles `
                 + "," + $lastRunStatus + "," + $nextRun
         $jobsArray += $item
     }
@@ -796,7 +809,7 @@ function Add-WordParagraph ($configReport, $docTag, $fontType, $fontStyle, $cont
     
         } else {
             Write-Host "[WARN] Could not find $($docTag) in $($configReport). No updates."
-            Add-Content -Path  $sessionLog -Value "$(Get-TimeStamp) [WARN] Could not find $($docTag) in $($configReport). No updates."         
+            Add-Content -Path  $sessionLog -Value "$(Get-TimeStamp) [WARN] Could not find $($docTag) in $($configReport). No updates."       
         }
         $doc.Close()
         $objWord.Quit()
@@ -852,7 +865,7 @@ function Update-Report($logFileDir, $configReport, $sessionLog) {
     } else {
         $backupWindowText = "Could not find file for backup_window"
     }
-    Add-WordParagraph -configReport $configReport -docTag $docTag -fontStyle $fontStyle -fontType $fontType -Content $backupWindowText -logFile $logFile
+    Add-WordParagraph -configReport $configReport -docTag $docTag -fontStyle $fontStyle -fontType $fontType -Content $backupWindowText -logFile $logFile -sessionLog $sessionLog
 
     $docTag = "<insert backup window table>"
     if ($tmpContent) {
@@ -870,25 +883,49 @@ function Update-Report($logFileDir, $configReport, $sessionLog) {
     $logFileSOBR = $logFileDir + $logFileNameSOBR + ".csv"
     try {
         $sobrArray = Get-Content (Get-ChildItem -Path $logFileSOBR | Sort-Object -Descending)[0]
+        # parsing full csv file and selecting for report only $colSummaryTable
+        $colSummaryTable = 3
+        $summarySobrArray = Create-SummaryTableContent -contentArray $sobrArray -colSummaryTable $colSummaryTable
     } catch {
         Add-Content -Path $sessionLog -Value "$(Get-TimeStamp) [WARN] SoBR file not uploaded $($_.Exception.ItemName) : $($_.Exception.Message)"
-        $sobrArray = @("Could not find file for sobr_configuration")
+        $summarySobrArray = @("Could not find file for sobr_configuration")
         Write-Host -ForegroundColor magenta " > could not find file for sobr_configuration"
     }
     $docTag = "<insert sobr table>"
-    Add-WordTable -configReport $configReport -docTag $docTag -Content $sobrArray -logFile $logFileSOBR
+    Add-WordTable -configReport $configReport -docTag $docTag -Content $summarySobrArray -logFile $logFileSOBR -sessionLog $sessionLog
 
     $logFileNameExtents = "sobr_extent_configuration*"
     $logFileExtents = $logFileDir + $logFileNameExtents + ".csv"
     try {
         $sobrExtentArrayContent = Get-Content (Get-ChildItem -Path $logFileExtents | Sort-Object -Descending)[0]
+        # parsing full csv file and selecting for report only $colSummaryTable
+        $colSummaryTable = 9
+        $summarySobrExtentArrayContent = Create-SummaryTableContent -contentArray $sobrExtentArrayContent -colSummaryTable $colSummaryTable
     } catch {
         Add-Content -Path $sessionLog -Value "$(Get-TimeStamp) [WARN] SoBR extents file not uploaded $($_.Exception.ItemName) : $($_.Exception.Message)"
-        $sobrExtentArrayContent = @("Could not find file for sobr_extent_configuration")
+        $summarySobrExtentArrayContent = @("Could not find file for sobr_extent_configuration")
         Write-Host -ForegroundColor magenta " > could not find file for sobr_extent_configuration"
     }
     $docTag = "<insert sobr extents table>"
-    Add-WordTable -configReport $configReport -docTag $docTag -Content $sobrExtentArrayContent -logFile $logFileExtents -sessionLog $sessionLog
+    Add-WordTable -configReport $configReport -docTag $docTag -Content $summarySobrExtentArrayContent -logFile $logFileExtents -sessionLog $sessionLog
+
+    # Capacity Tier
+    Write-Host "sobr capacity tier - updating configuration report"
+    Add-Content -Path  $sessionLog -Value "$(Get-TimeStamp) sobr capacity tier - updating configuration report"
+    $logFileName = "sobr_capacity_extents*"
+    $logFile = $logFileDir + $logFileName + ".csv"
+    try {
+        $repoCapacityArray = Get-Content (Get-ChildItem -Path $logFile | Sort-Object -Descending)[0]
+        # parsing full csv file and selecting for report only $colSummaryTable
+        $colSummaryTable = 5
+        $summaryRepoCapacityArray = Create-SummaryTableContent -contentArray $repoCapacityArray -colSummaryTable $colSummaryTable
+    } catch {
+        Add-Content -Path $sessionLog -Value "$(Get-TimeStamp) [WARN] Cpacity tier configuration file not uploaded $($_.Exception.ItemName) : $($_.Exception.Message)"
+        $summaryRepoCapacityArray = @("Could not find file for sobr_capacity_extents")
+        Write-Host -ForegroundColor magenta " > could not find file for sobr_capacity_extents"
+    }
+    $docTag = "<insert capacity extents table>"
+    Add-WordTable -configReport $configReport -docTag $docTag -Content $summaryRepoCapacityArray -logFile $logFile -sessionLog $sessionLog
 
     # Repositories
     Write-Host "backup repo - updating configuration report"
@@ -897,13 +934,16 @@ function Update-Report($logFileDir, $configReport, $sessionLog) {
     $logFile = $logFileDir + $logFileName + ".csv"
     try {
         $repoArray = Get-Content (Get-ChildItem -Path $logFile | Sort-Object -Descending)[0]
+        # parsing full csv file and selecting for report only $colSummaryTable
+        $colSummaryTable = 9
+        $summaryRepoArray = Create-SummaryTableContent -contentArray $repoArray -colSummaryTable $colSummaryTable
     } catch {
         Add-Content -Path $sessionLog -Value "$(Get-TimeStamp) [WARN] Repo configuration file not uploaded $($_.Exception.ItemName) : $($_.Exception.Message)"
-        $repoArray = @("Could not find file for repository_configuration")
+        $summaryRepoArray = @("Could not find file for repository_configuration")
         Write-Host -ForegroundColor magenta " > could not find file for repository_configuration"
     }
     $docTag = "<insert repo table>"
-    Add-WordTable -configReport $configReport -docTag $docTag -Content $repoArray -logFile $logFile -sessionLog $sessionLog
+    Add-WordTable -configReport $configReport -docTag $docTag -Content $summaryRepoArray -logFile $logFile -sessionLog $sessionLog
 
     # VMware Proxies
     Write-Host "VMware proxy - updating configuration report"
@@ -912,13 +952,16 @@ function Update-Report($logFileDir, $configReport, $sessionLog) {
     $logFile = $logFileDir + $logFileName + ".csv"
     try {
         $viProxyArray = Get-Content (Get-ChildItem -Path $logFile | Sort-Object -Descending)[0]
+        # parsing full csv file and selecting for report only $colSummaryTable
+        $colSummaryTable = 8
+        $summaryViProxyArray = Create-SummaryTableContent -contentArray $viProxyArray -colSummaryTable $colSummaryTable
     } catch {
         Add-Content -Path $sessionLog -Value "$(Get-TimeStamp) [WARN] VMware proxy configuration file not uploaded $($_.Exception.ItemName) : $($_.Exception.Message)"
-        $viProxyArray = @("Could not find file for proxy_vmw_configuration")
+        $summaryViProxyArray = @("Could not find file for proxy_vmw_configuration")
         Write-Host -ForegroundColor magenta " > could not find file for proxy_vmw_configuration"
     }
     $docTag = "<insert vmw proxy servers table>"
-    Add-WordTable -configReport $configReport -docTag $docTag -Content $viProxyArray -logFile $logFile -sessionLog $sessionLog
+    Add-WordTable -configReport $configReport -docTag $docTag -Content $summaryViProxyArray -logFile $logFile -sessionLog $sessionLog
 
     # Hyper-V Proxies
     Write-Host "Hyper-V proxies - updating configuration report"
@@ -927,13 +970,16 @@ function Update-Report($logFileDir, $configReport, $sessionLog) {
     $logFile = $logFileDir + $logFileName + ".csv"
     try {
         $hvProxyArray = Get-Content (Get-ChildItem -Path $logFile | Sort-Object -Descending)[0]
+        # parsing full csv file and selecting for report only $colSummaryTable
+        $colSummaryTable = 7
+        $summaryHvProxyArray = Create-SummaryTableContent -contentArray $hvProxyArray -colSummaryTable $colSummaryTable
     } catch {
         Add-Content -Path $sessionLog -Value "$(Get-TimeStamp) [WARN] Hyper-V proxy configuration file not uploaded $($_.Exception.ItemName) : $($_.Exception.Message)"
-        $hvProxyArray = @("Could not find file for proxy_hv_configuration")
+        $summaryHvProxyArray = @("Could not find file for proxy_hv_configuration")
         Write-Host -ForegroundColor magenta " > could not find file for proxy_hv_configuration"
     }
     $docTag = "<insert hv proxy servers table>"
-    Add-WordTable -configReport $configReport -docTag $docTag -Content $hvProxyArray -logFile $logFile -sessionLog $sessionLog
+    Add-WordTable -configReport $configReport -docTag $docTag -Content $summaryHvProxyArray -logFile $logFile -sessionLog $sessionLog
 
     # WAN Accelerators
     Write-Host "WAN accelerators - updating configuration report"
@@ -1004,18 +1050,7 @@ function Update-Report($logFileDir, $configReport, $sessionLog) {
     if ($tapeJobsArray -ne "Could not find file for all_tape_jobs") {
         # parsing full csv file and selecting for report only $colSummaryTable
         $colSummaryTable = 7
-        $tmpArray = @()
-        $summaryTapeJobsArray = @()
-        for ($i=0;$i -lt $tapeJobsArray.Length; $i++) {
-            $tmpArray += ,@($tapeJobsArray[$i].Split(','))
-        }   
-        foreach ($record in $tmpArray) {
-            $item=""
-            for ($j=0;$j -lt $colSummaryTable; $j++) {
-                $item += ($record[$j] + ",")
-            }
-            $summaryTapeJobsArray += $item.Substring(0,$item.Length-1)
-        }
+        $summaryTapeJobsArray = Create-SummaryTableContent -contentArray $tapeJobsArray -colSummaryTable $colSummaryTable
         $docTag = "<insert tape backup jobs table>"
         Add-WordTable -configReport $configReport -docTag $docTag -Content $summaryTapeJobsArray -logFile $logFile -sessionLog $sessionLog   
     } else {
@@ -1055,6 +1090,22 @@ function Update-Report($logFileDir, $configReport, $sessionLog) {
     $docTag = "<insert backup infra table>"
     Add-WordTable -configReport $configReport -docTag $docTag -Content $infraArray -logFile $logFile -sessionLog $sessionLog
 
+}
+
+function Create-SummaryTableContent($contentArray, $colSummaryTable) {
+    $tmpArray = @()
+    $summaryArray = @()
+    for ($i=0;$i -lt $contentArray.Length; $i++) {
+        $tmpArray += ,@($contentArray[$i].Split(','))
+    }   
+    foreach ($record in $tmpArray) {
+        $item=""
+        for ($j=0;$j -lt $colSummaryTable; $j++) {
+            $item += ($record[$j] + ",")
+        }
+        $summaryArray += $item.Substring(0,$item.Length-1)
+    }
+    return $summaryArray   
 }
 
 ### END FUNCTION DEFINITION ###
@@ -1230,6 +1281,16 @@ Select a task by number or Q to quit
                 $logFileSOBR = $logFilePath + $logFileNameSOBR + '_' + $runTime + '.csv'
                 $logFileExtents = $logFilePath + $logFileNameExtents + '_' + $runTime + '.csv'
                 Check-SOBR -sobrList $sobrList -logFileSOBR $logFileSOBR -logFileExtents $logFileExtents -sessionLog $sessionLog
+                # Capacity tier 
+                $logFileNameSOBRCapacity = 'sobr_capacity_extents'
+                $logFileSOBRCapacity = $logFilePath + $logFileNameSOBRCapacity + '_' + $runTime + '.csv'
+                $curVersion = Check-VBRVersion
+                if ($curVersion -like "9.5.4*") {
+                    $capacityTierExtents = Get-VBRBackupRepository -ScaleOut | Get-VBRCapacityExtent
+                    if ($capacityTierExtents) {
+                        Check-SOBRCapacityExtents -capacityTierExtents $capacityTierExtents -logFile $logFileSOBRCapacity -sessionLog $sessionLog
+                    }
+                }
                 # Check repositories
                 Add-Content -Path  $sessionLog -Value "$(Get-TimeStamp) get repo list"
                 $repoList = Get-VBRBackupRepository | Sort-Object -Property Name
@@ -1237,6 +1298,7 @@ Select a task by number or Q to quit
                 $logFile = $logFilePath + $logFileName + '_' + $runTime + '.csv'
                 Check-Repo -repoList $repoList -logFile $logFile -sessionLog $sessionLog
                 Start-Sleep -seconds 1
+            
             }
         "4" {   # check proxies
                 $runTime = Get-RunTime
