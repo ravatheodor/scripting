@@ -33,13 +33,14 @@
             <insert repo table>, <insert sobr table>, <insert sobr extents table>, <insert wan acc table>,
             <insert backup window interval>, <insert backup window table>, <insert backup jobs table>,
             <insert replication jobs table>, <insert backup copy jobs table>
-
+        v1.1.4 - additional supported tags
+            <insert tape backup jobs table>,<insert surebackup jobs table>
 
     .EXAMPLE
     .\VeeamConfigurationDump.ps1
 
     .NOTES
-    Version: 1.1.3
+    Version: 1.1.4
     Author: Razvan Ionescu
     Last Updated: August 2019
 
@@ -562,6 +563,50 @@ function Create-JobOverview($allJobs, $allSessions, $logFile, $configReport, $se
     }
     $jobsArray | foreach { Add-Content -Path  $logFile -Value $_ }
 }
+
+function Check-TapeJobs($jobs, $logFile, $sessionLog) {
+    $tapeJobsArray = @('Job Name,Job Type,Last Run Status,Next Run,is GFS, Wait Backups,Full Policy,Objects,Hw Compression,Eject Media')
+    foreach ($job in $jobs) {
+        if ($job.NextRun) {
+            $nextRun = $job.NextRun
+        } else {
+            $nextRun = "N/A"
+        }
+
+        $isGFS = $False
+        if ($job.GFSScheduleOptions) {
+            $isGFS = $True
+        }
+
+        $jobObjects = ""
+        if ($job.Type -eq "FileToTape") {
+            $jobObjects += $job.Object
+            $waitBackups = "N/A"
+        } else {
+            $jobObjects += $job.Object.LogNameMainPart
+            $waitBackups = $job.WaitForBackupJobs
+        }
+        
+        # csv full details
+        $item = $job.Name + "," + $job.Type + "," +  $job.LastResult + "," +  $job.NextRun + "," +  $isGFS + "," +  $waitBackups `
+                + "," + $job.FullBackupPolicy.Type + "," + $jobObjects + "," + $job.UseHardwareCompression  + "," + $job.EjectCurrentMedium
+        $tapeJobsArray += $item
+    }
+    $tapeJobsArray | foreach { Add-Content -Path  $logFile -Value $_ }
+}
+
+
+function Check-SBJobs($jobs, $logFile, $sessionLog) {
+    $sbJobsArray = @('Job Name,Last Run Status,Shutdown VMs')
+    foreach ($job in $jobs) {
+        # csv full details
+        $item = $job.Name + "," + $job.GetLastResult() + "," +  $job.JobOptions.ShutdownTestVms 
+        $sbJobsArray += $item
+    }
+    $sbJobsArray | foreach { Add-Content -Path  $logFile -Value $_ }
+}
+
+
 function Check-LastRun($jobName, $jobSessions, $sessionLog) {
     $lastRun = ""
     $tmpSession = @()
@@ -763,7 +808,7 @@ function Update-Report($logFileDir, $configReport, $sessionLog) {
     $logFileName = "vbr_general_config*"
     $logFile = $logFileDir + $logFileName + ".log"
     try {
-        $vbrConfigText = Get-Content (Get-ChildItem -Path $logFile)[0]
+        $vbrConfigText = Get-Content (Get-ChildItem -Path $logFile | Sort-Object -Descending)[0]
     } catch {
         Add-Content -Path $sessionLog -Value "$(Get-TimeStamp) [WARN] VBR general config file not uploaded $($_.Exception.ItemName) : $($_.Exception.Message)"
         $vbrConfigText = "Could not find file for vbr_general_config"
@@ -782,7 +827,7 @@ function Update-Report($logFileDir, $configReport, $sessionLog) {
     $logFile = $logFileDir + $logFileName + ".csv"
     $backupWindowArray = @()
     try {
-        $tmpContent = Get-Content (Get-ChildItem -Path $logFile)[0]
+        $tmpContent = Get-Content (Get-ChildItem -Path $logFile | Sort-Object -Descending)[0]
     } catch {
         Add-Content -Path $sessionLog -Value "$(Get-TimeStamp) [WARN] Backup window file not uploaded $($_.Exception.ItemName) : $($_.Exception.Message)"
         $tmpContent = $False
@@ -814,7 +859,7 @@ function Update-Report($logFileDir, $configReport, $sessionLog) {
     $logFileNameSOBR = "sobr_configuration*"
     $logFileSOBR = $logFileDir + $logFileNameSOBR + ".csv"
     try {
-        $sobrArray = Get-Content (Get-ChildItem -Path $logFileSOBR)[0]
+        $sobrArray = Get-Content (Get-ChildItem -Path $logFileSOBR | Sort-Object -Descending)[0]
     } catch {
         Add-Content -Path $sessionLog -Value "$(Get-TimeStamp) [WARN] SoBR file not uploaded $($_.Exception.ItemName) : $($_.Exception.Message)"
         $sobrArray = @("Could not find file for sobr_configuration")
@@ -826,7 +871,7 @@ function Update-Report($logFileDir, $configReport, $sessionLog) {
     $logFileNameExtents = "sobr_extent_configuration*"
     $logFileExtents = $logFileDir + $logFileNameExtents + ".csv"
     try {
-        $sobrExtentArrayContent = Get-Content (Get-ChildItem -Path $logFileExtents)[0]
+        $sobrExtentArrayContent = Get-Content (Get-ChildItem -Path $logFileExtents | Sort-Object -Descending)[0]
     } catch {
         Add-Content -Path $sessionLog -Value "$(Get-TimeStamp) [WARN] SoBR extents file not uploaded $($_.Exception.ItemName) : $($_.Exception.Message)"
         $sobrExtentArrayContent = @("Could not find file for sobr_extent_configuration")
@@ -841,7 +886,7 @@ function Update-Report($logFileDir, $configReport, $sessionLog) {
     $logFileName = "repository_configuration*"
     $logFile = $logFileDir + $logFileName + ".csv"
     try {
-        $repoArray = Get-Content (Get-ChildItem -Path $logFile)[0]
+        $repoArray = Get-Content (Get-ChildItem -Path $logFile | Sort-Object -Descending)[0]
     } catch {
         Add-Content -Path $sessionLog -Value "$(Get-TimeStamp) [WARN] Repo configuration file not uploaded $($_.Exception.ItemName) : $($_.Exception.Message)"
         $repoArray = @("Could not find file for repository_configuration")
@@ -856,7 +901,7 @@ function Update-Report($logFileDir, $configReport, $sessionLog) {
     $logFileName = "proxy_vmw_configuration*"
     $logFile = $logFileDir + $logFileName + ".csv"
     try {
-        $viProxyArray = Get-Content (Get-ChildItem -Path $logFile)[0]
+        $viProxyArray = Get-Content (Get-ChildItem -Path $logFile | Sort-Object -Descending)[0]
     } catch {
         Add-Content -Path $sessionLog -Value "$(Get-TimeStamp) [WARN] VMware proxy configuration file not uploaded $($_.Exception.ItemName) : $($_.Exception.Message)"
         $viProxyArray = @("Could not find file for proxy_vmw_configuration")
@@ -871,7 +916,7 @@ function Update-Report($logFileDir, $configReport, $sessionLog) {
     $logFileName = "proxy_hv_configuration*"
     $logFile = $logFileDir + $logFileName + ".csv"
     try {
-        $hvProxyArray = Get-Content (Get-ChildItem -Path $logFile)[0]
+        $hvProxyArray = Get-Content (Get-ChildItem -Path $logFile | Sort-Object -Descending)[0]
     } catch {
         Add-Content -Path $sessionLog -Value "$(Get-TimeStamp) [WARN] Hyper-V proxy configuration file not uploaded $($_.Exception.ItemName) : $($_.Exception.Message)"
         $hvProxyArray = @("Could not find file for proxy_hv_configuration")
@@ -886,7 +931,7 @@ function Update-Report($logFileDir, $configReport, $sessionLog) {
     $logFileName = "wan_acc_configuration*"
     $logFile = $logFileDir + $logFileName + ".csv"
     try {
-        $wanAccArray = Get-Content (Get-ChildItem -Path $logFile)[0]
+        $wanAccArray = Get-Content (Get-ChildItem -Path $logFile | Sort-Object -Descending)[0]
     } catch {
         Add-Content -Path $sessionLog -Value "$(Get-TimeStamp) [WARN] WAN accelerator configuration file not uploaded $($_.Exception.ItemName) : $($_.Exception.Message)"
         $wanAccArray = @("Could not find file for wan_acc_configuration")
@@ -901,7 +946,7 @@ function Update-Report($logFileDir, $configReport, $sessionLog) {
     $logFileName = "all_jobs_summary*"
     $logFile = $logFileDir + $logFileName + ".csv"
     try {
-        $jobsArray = Get-Content (Get-ChildItem -Path $logFile)[0]
+        $jobsArray = Get-Content (Get-ChildItem -Path $logFile | Sort-Object -Descending)[0]
     } catch {
         Add-Content -Path $sessionLog -Value "$(Get-TimeStamp) [WARN] Jobs overview file not uploaded $($_.Exception.ItemName) : $($_.Exception.Message)"
         $jobsArray = @("Could not find file for all_jobs_summary")
@@ -933,7 +978,57 @@ function Update-Report($logFileDir, $configReport, $sessionLog) {
     $docTag = "<insert backup jobs table>"
     Add-WordTable -configReport $configReport -docTag $docTag -Content $jobsArrayBackup -logFile $logFile -sessionLog $sessionLog
 
-    
+    # tape jobs
+    Write-Host "tape jobs - updating configuration report"
+    Add-Content -Path  $sessionLog -Value "$(Get-TimeStamp) tape jobs - updating configuration report"
+    $logFileName = "all_tape_jobs*"
+    $logFile = $logFileDir + $logFileName + ".csv"
+    try {
+        $tapeJobsArray = Get-Content (Get-ChildItem -Path $logFile | Sort-Object -Descending)[0]
+    } catch {
+        Add-Content -Path $sessionLog -Value "$(Get-TimeStamp) [WARN] Tape jobs configuration file not uploaded $($_.Exception.ItemName) : $($_.Exception.Message)"
+        $tapeJobsArray = @("Could not find file for all_tape_jobs")
+        Write-Host -ForegroundColor magenta " > could not find file for all_tape_jobs"
+    }
+
+    if ($tapeJobsArray -ne "Could not find file for all_tape_jobs") {
+        # parsing full csv file and selecting for report only $colSummaryTable
+        $colSummaryTable = 7
+        $tmpArray = @()
+        $summaryTapeJobsArray = @()
+        for ($i=0;$i -lt $tapeJobsArray.Length; $i++) {
+            $tmpArray += ,@($tapeJobsArray[$i].Split(','))
+        }   
+        foreach ($record in $tmpArray) {
+            $item=""
+            for ($j=0;$j -lt $colSummaryTable; $j++) {
+                $item += ($record[$j] + ",")
+            }
+            $summaryTapeJobsArray += $item.Substring(0,$item.Length-1)
+        }
+        $docTag = "<insert tape backup jobs table>"
+        Add-WordTable -configReport $configReport -docTag $docTag -Content $summaryTapeJobsArray -logFile $logFile -sessionLog $sessionLog   
+    } else {
+        $docTag = "<insert tape backup jobs table>"
+        Add-WordTable -configReport $configReport -docTag $docTag -Content $tapeJobsArray -logFile $logFile -sessionLog $sessionLog        
+    }
+
+    # SureBackup jobs
+    Write-Host "SureBackup jobs - updating configuration report"
+    Add-Content -Path  $sessionLog -Value "$(Get-TimeStamp) SureBackup jobs - updating configuration report"
+    $logFileName = "all_surebackup_jobs*"
+    $logFile = $logFileDir + $logFileName + ".csv"
+    try {
+        $sbJobsArray = Get-Content (Get-ChildItem -Path $logFile | Sort-Object -Descending)[0]
+    } catch {
+        Add-Content -Path $sessionLog -Value "$(Get-TimeStamp) [WARN] SureBackup jobs file not uploaded $($_.Exception.ItemName) : $($_.Exception.Message)"
+        $sbJobsArray = @("Could not find file for all_surebackup_jobs")
+        Write-Host -ForegroundColor magenta " > could not find file for all_surebackup_jobs"
+    }
+
+    $docTag = "<insert surebackup jobs table>"
+    Add-WordTable -configReport $configReport -docTag $docTag -Content $sbJobsArray -logFile $logFile -sessionLog $sessionLog
+
 }
 
 ### END FUNCTION DEFINITION ###
@@ -1150,7 +1245,7 @@ Select a task by number or Q to quit
                 # check  if any backup copy jobs are configured
                 $backupCopyJobs = @($allJobs | ? {$_.JobType -eq "BackupSync"})
                 if ($backupCopyJobs.Count -gt 0) {
-                    Write-Host "... retrieving all sessions"
+                    Write-Host "... retrieving sessions"
                     Add-Content -Path  $sessionLog -Value "$(Get-TimeStamp) retrieving sessions "
                     $allSessions = Get-VBRBackupSession
                     $allSessions = @($allSessions | ?{$_.JobType -eq "BackupSync"})
@@ -1169,8 +1264,35 @@ Select a task by number or Q to quit
                     $jobName = $jobName -replace '\\','_'
                     $logFileName = 'job_' + $jobName
                     $logFile = $logFilePath + $logFileName + '_' + $runTime + '.log'
-                    Check-JobConfiguration -job $job -allSessions $allSessions -jobCsvFile $jobCsvFile -logFile $logFile
+                    Check-JobConfiguration -job $job -allSessions $allSessions -jobCsvFile $jobCsvFile -logFile $logFile -sessionLog $sessionLog
                 }
+                # tape jobs
+                Write-Host "... checking tape jobs"
+                Add-Content -Path  $sessionLog -Value "$(Get-TimeStamp) checking tape jobs"
+                $logFileName = 'all_tape_jobs' 
+                $logFile = $logFilePath + $logFileName + '_' + $runTime + '.csv'
+                $allTapeJobs = Get-VBRTapeJob | Sort-Object -Property Name
+                if ($allTapeJobs) {
+                    Check-TapeJobs -jobs $allTapeJobs -logFile $logFile -sessionLog $sessionLog
+                } else {
+                    Write-Host "... no tape jobs found "
+                    Add-Content -Path  $sessionLog -Value "$(Get-TimeStamp) no tape jobs found "
+                }
+
+                # SureBackup jobs
+                Write-Host "... checking SureBackup jobs"
+                Add-Content -Path  $sessionLog -Value "$(Get-TimeStamp) checking SureBackup jobs"
+                $logFileName = 'all_surebackup_jobs' 
+                $logFile = $logFilePath + $logFileName + '_' + $runTime + '.csv'
+                $allSBJobs = Get-VSBJob | Sort-Object -Property Name
+                if ($allSBJobs) {
+                    Check-SBJobs -jobs $allSBJobs -logFile $logFile -sessionLog $sessionLog
+                } else {
+                    Write-Host "... no SureBackup jobs found "
+                    Add-Content -Path  $sessionLog -Value "$(Get-TimeStamp) no SureBackup jobs found "
+                }
+
+
                 Sleep -seconds 1
             }
         "7" {   # Backup sessions 
