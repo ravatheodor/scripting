@@ -34,7 +34,7 @@
             <insert backup window interval>, <insert backup window table>, <insert backup jobs table>,
             <insert replication jobs table>, <insert backup copy jobs table>
         v1.1.4 - additional supported tags
-            <insert tape backup jobs table>,<insert surebackup jobs table>
+            <insert tape backup jobs table>,<insert surebackup jobs table>,<insert backup infra table>
 
     .EXAMPLE
     .\VeeamConfigurationDump.ps1
@@ -209,7 +209,7 @@ function Check-VBRGeneralConfig($logFile, $configReport, $sessionLog) {
     
     Add-Content -Path  $logFile -Value "`r`nLinux hosts trust setting: $([Veeam.Backup.Core.SBackupOptions]::LinuxHostsTrustMode)" 
 
-    Sleep -Seconds 2
+    Start-Sleep -Seconds 2
     
 }
   
@@ -600,12 +600,22 @@ function Check-SBJobs($jobs, $logFile, $sessionLog) {
     $sbJobsArray = @('Job Name,Last Run Status,Shutdown VMs')
     foreach ($job in $jobs) {
         # csv full details
-        $item = $job.Name + "," + $job.GetLastResult() + "," +  $job.JobOptions.ShutdownTestVms 
+        $item = $job.Name + "," + $job.GetLastResult() + "," + $job.JobOptions.ShutdownTestVms 
         $sbJobsArray += $item
     }
     $sbJobsArray | foreach { Add-Content -Path  $logFile -Value $_ }
 }
 
+
+function Get-InfraDetails ($infra, $logFile, $sessionLog) {
+    $infraArray = @('Name,Description,Type,Api Version,Is Unavailable')
+    foreach ($srv in $infra) {
+        # csv full details
+        $item = $srv.Name + "," + $srv.Description + "," + $srv.Type + "," + $srv.ApiVersion + "," + $srv.IsUnavailable
+        $infraArray += $item
+    }
+    $infraArray | foreach { Add-Content -Path  $logFile -Value $_ }
+}
 
 function Check-LastRun($jobName, $jobSessions, $sessionLog) {
     $lastRun = ""
@@ -1029,6 +1039,22 @@ function Update-Report($logFileDir, $configReport, $sessionLog) {
     $docTag = "<insert surebackup jobs table>"
     Add-WordTable -configReport $configReport -docTag $docTag -Content $sbJobsArray -logFile $logFile -sessionLog $sessionLog
 
+    # # backup infra details
+    Write-Host "infra details - updating configuration report"
+    Add-Content -Path  $sessionLog -Value "$(Get-TimeStamp) infra details - updating configuration report"
+    $logFileName = "infra_details*"
+    $logFile = $logFileDir + $logFileName + ".csv"
+    try {
+        $infraArray = Get-Content (Get-ChildItem -Path $logFile | Sort-Object -Descending)[0]
+    } catch {
+        Add-Content -Path $sessionLog -Value "$(Get-TimeStamp) [WARN] infra details file not uploaded $($_.Exception.ItemName) : $($_.Exception.Message)"
+        $infraArray = @("Could not find file for infra_details")
+        Write-Host -ForegroundColor magenta " > could not find file for infra_details"
+    }
+
+    $docTag = "<insert backup infra table>"
+    Add-WordTable -configReport $configReport -docTag $docTag -Content $infraArray -logFile $logFile -sessionLog $sessionLog
+
 }
 
 ### END FUNCTION DEFINITION ###
@@ -1157,6 +1183,7 @@ $menu=@"
 6 Check jobs
 7 Get backup sessions
 8 Get replica sessions
+9 Infrastructure details
 Q Quit
  
 Select a task by number or Q to quit
@@ -1171,7 +1198,7 @@ Select a task by number or Q to quit
                 $curVersion = Check-VBRVersion
                 Add-Content -Path  $logFile -Value "Installed VBR version $($curVersion)"
                 Check-VBRGeneralConfig -logFile $logFile -sessionLog $sessionLog
-                Sleep -seconds 1
+                Start-Sleep -seconds 1
             } 
         "2" {   # check backup window for jobs        
                 $backupWindowStart = "10:00PM"
@@ -1191,7 +1218,7 @@ Select a task by number or Q to quit
                 $logFileName = 'backup_window'
                 $logFile = $logFilePath + $logFileName + '_' + $runTime + '.csv'
                 Check-BackupWindow -backupWindowStart $backupWindowStart -backupWindowEnd $backupWindowEnd -allJobs $allJobs -logFile $logFile -sessionLog $sessionLog
-                Sleep -seconds 1
+                Start-Sleep -seconds 1
             }
         "3" {   # check repositories 
                 $runTime = Get-RunTime
@@ -1209,7 +1236,7 @@ Select a task by number or Q to quit
                 $logFileName = 'repository_configuration'
                 $logFile = $logFilePath + $logFileName + '_' + $runTime + '.csv'
                 Check-Repo -repoList $repoList -logFile $logFile -sessionLog $sessionLog
-                Sleep -seconds 1
+                Start-Sleep -seconds 1
             }
         "4" {   # check proxies
                 $runTime = Get-RunTime
@@ -1225,7 +1252,7 @@ Select a task by number or Q to quit
                 $logFileName = 'proxy_hv_configuration'
                 $logFile = $logFilePath + $logFileName + '_' + $runTime + '.csv'
                 Check-ProxyHv -hvProxyList $hvProxyList -logFile $logFile -sessionLog $sessionLog
-                Sleep -seconds 1
+                Start-Sleep -seconds 1
             }
         "5" {   # Check WAN accelerator
                 $runTime = Get-RunTime
@@ -1233,7 +1260,7 @@ Select a task by number or Q to quit
                 $logFileName = 'wan_acc_configuration'
                 $logFile = $logFilePath + $logFileName + '_' + $runTime + '.csv'
                 Check-WANAcc -wanAccList $wanAccList -logFile $logFile -sessionLog $sessionLog
-                Sleep -seconds 1
+                Start-Sleep -seconds 1
             }
         "6" {   # Check jobs 
                 $runTime = Get-RunTime
@@ -1292,8 +1319,7 @@ Select a task by number or Q to quit
                     Add-Content -Path  $sessionLog -Value "$(Get-TimeStamp) no SureBackup jobs found "
                 }
 
-
-                Sleep -seconds 1
+                Start-Sleep -seconds 1
             }
         "7" {   # Backup sessions 
                 $hoursToCheck = 24
@@ -1307,7 +1333,7 @@ Select a task by number or Q to quit
                 Add-Content -Path  $sessionLog -Value "$(Get-TimeStamp) getting backup sessions for last $($HoursToCheck) hours"
                 Get-BackupSessions -jobType "Backup" -hourstoCheck $hoursToCheck -logFile $logFile -sessionLog $sessionLog
 
-                Sleep -seconds 1
+                Start-Sleep -seconds 1
         }
         "8" {   # Replica sessions 
                 $hoursToCheck = 24
@@ -1320,8 +1346,24 @@ Select a task by number or Q to quit
                 Add-Content -Path  $sessionLog -Value "$(Get-TimeStamp) getting replica sessions for last $($HoursToCheck) hours"
                 Get-BackupSessions -jobType "Replica" -hourstoCheck $hoursToCheck -logFile $logFile -sessionLog $sessionLog
 
-                Sleep -seconds 1
+                Start-Sleep -seconds 1
         }
+        "9" {   # Infrastructure details 
+            Write-Host "... infrastructure details"
+            Add-Content -Path  $sessionLog -Value "$(Get-TimeStamp) infrastructure details"
+            $logFileName = 'infra_details' 
+            $logFile = $logFilePath + $logFileName + '_' + $runTime + '.csv'
+            $infra = Get-VBRServer | Sort-Object -Property Type
+            if ($infra) {
+                Get-InfraDetails -infra $infra -logFile $logFile -sessionLog $sessionLog
+            } else {
+                Write-Host "... backup infrastructure is empty"
+                Add-Content -Path  $sessionLog -Value "$(Get-TimeStamp) backup infrastructure is empty"
+            }
+            
+
+            Start-Sleep -seconds 1
+    }
         "Q" {
                 Write-Host "Log files saved in $($logFileDir)" -ForegroundColor Cyan
                 Add-Content -Path  $sessionLog -Value "$(Get-TimeStamp) Log files saved in $($logFileDir)"
@@ -1329,7 +1371,7 @@ Select a task by number or Q to quit
             }
         Default {
                 Write-Warning "Invalid Choice. Try again."
-                Sleep -milliseconds 750
+                Start-Sleep -milliseconds 750
             }
         }
     } While ($True)
